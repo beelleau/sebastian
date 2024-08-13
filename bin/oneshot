@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # oneshot | run a command on remote hosts
-# requires: bash 3.2+, ssh
+# requires: bash 4.0+, ssh, gnu sed
 
 trap 'echo -e "\nSIGINT Received... exiting"; exit 130' SIGINT
 
@@ -66,6 +66,16 @@ parse_options() {
   done
 }
 
+file2array() {
+  # convert each line in a file to an array element
+  # skip lines that start with # or [, skip blank lines
+  # trim leading and trailing whitespace
+  # ARGS: $1 = array_name, $2 = filename
+  # RET: array
+  readarray -t "$1" < \
+            <(sed -E '/^[#\[]|^$/d; s/^[[:space:]]+|[[:space:]]+$//g' "$2")
+}
+
 ### main script flow
 # parse options and arguments; assign values
 format_style="0"
@@ -87,6 +97,11 @@ if [[ ! -f "$1" ]]; then
   exit 3
 fi
 
+# declare an array to iterate through for command
+declare -a host_array
+# place the hostfile into an array, parsing using file2array
+file2array "host_array" "$1"
+
 # assemble the commands to pass into ssh, add "true" to handle ssh errors
 cmd_array=("${@:2}" "2>&1" "||" "true")
 
@@ -94,7 +109,7 @@ cmd_array=("${@:2}" "2>&1" "||" "true")
 case "$format_style" in
   0)
     # no formatting, just passing stdout
-    while read -r hostname; do
+    for hostname in "${host_array[@]}"; do
       cmd_output=$(ssh -nq -o StrictHostKeychecking=no -o ConnectTimeout=10 \
                        "${username}"@"${hostname}" "${cmd_array[@]}")
       if [[ $? -eq 255 ]]; then
@@ -102,11 +117,11 @@ case "$format_style" in
       else
         echo "$cmd_output"
       fi
-    done < "$1"
+    done
     ;;
   1)
     # "-a", hostname and then a line break, extra blank line at end
-    while read -r hostname; do
+    for hostname in "${host_array[@]}"; do
       echo "${hostname}:"
       cmd_output=$(ssh -nq -o StrictHostKeychecking=no -o ConnectTimeout=10 \
                        "${username}"@"${hostname}" "${cmd_array[@]}")
@@ -116,12 +131,12 @@ case "$format_style" in
        echo "$cmd_output"
       fi
       echo ""
-    done < "$1"
+    done
     ;;
   2)
     # "-c", csv format: {hostname},{stdout}
     echo "hostname,output"
-    while read -r hostname; do
+    for hostname in "${host_array[@]}"; do
       echo -n "${hostname},"
       cmd_output=$(ssh -nq -o StrictHostKeychecking=no -o ConnectTimeout=10 \
                        "${username}"@"${hostname}" "${cmd_array[@]}")
@@ -130,6 +145,6 @@ case "$format_style" in
       else
         echo "$cmd_output"
       fi
-    done < "$1"
+    done
     ;;
 esac

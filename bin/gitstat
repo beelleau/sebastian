@@ -32,7 +32,7 @@ parse_options() {
   case $opt in
     h) show_help; exit 0 ;;
     \?)
-      echo "Invalid option: -$OPTARG" >&2
+      err "Invalid option: -$OPTARG"
       show_help
       exit 1
       ;;

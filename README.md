@@ -1,12 +1,14 @@
 # My Bash scripts
-This repository contains some Bash scripts I made to help me with small tasks.
+Contains Bash scripts I've written to help with small tasks.
+
+---
 
 ### oneshot
 `oneshot` allows you to run a command against a list of remote hosts.  
 
 ! Exercise caution when using this script. In general, it should only be used to gather basic information from a list of remote servers.  
 
-A "hostlist" is required to use `oneshot`. It must be line-break separated. It will read every line verbatim (I'm intending on updating this).  
+A "hostlist" is required to use `oneshot`. It must be line-break separated. It will read every line that is not blank, and does not start with a `#` or `[`.  
 
 Functionally, this script assumes that you have key-based authentication for ssh.  
 
@@ -32,6 +34,8 @@ ssh to each host in "./hostlist" as the user "admin" and run the command `uname 
 
 `oneshot -c -u karry /tmp/hostlist "grep -i 'pretty' /etc/os-release | cut -d '=' -f2 | tr -d '\"'" | tee output.csv`  
 ssh to each host in "/tmp/hostlist" as the user "larry" and run the command `grep -i 'pretty' /etc/os-release | cut -d '=' -f2 | tr -d '"'` while using `tee` to write the output to the file "output.csv" and to your terminal. Notice the escape character before the double-quote within the command.  
+
+---
 
 ### gitstat
 `gitstat` finds all git repositories in your current directory, or under a specified directory. It prints the output of the `git status` command for each repository found.  
