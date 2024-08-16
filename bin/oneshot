@@ -42,9 +42,10 @@ parse_options() {
   # set a local variable that prevents mutually exclusive options
   # use with parse_options_prevent_me function
   local mutually_exclusive_options=
+  local opt
 
   while getopts "hacu:" opt; do
-    case $opt in
+    case "$opt" in
       h) show_help; exit 0 ;;
       a)
         parse_options_prevent_me

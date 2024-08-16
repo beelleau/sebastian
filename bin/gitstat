@@ -3,8 +3,8 @@
 # gitstat | find git repos and print git status
 # requires: bash 3.2+, find, git
 
-MAGENTA="\033[0;35m"
-RESET="\033[0m"
+declare magenta="\033[0;35m"
+declare reset="\033[0m"
 
 trap 'echo -e "\nSIGINT Received... exiting"; exit 130' SIGINT
 
@@ -15,10 +15,11 @@ err() {
 
 show_help() {
   # help text
-  echo "Usage: ${0##*/} [/path/to/directory]"
+  echo "Usage: ${0##*/} [-d <top level directory>] [-e <excluded directory>]"
   echo "Options:"
   echo "  -h, --help    Show this help menu"
-  echo ""
+  echo "  -d <dir>      Specify the top level directory to search from"
+  echo "  -e <dir>      Specify a directory to exclude from results"
 }
 
 parse_options() {
@@ -28,49 +29,90 @@ parse_options() {
     exit 0
   fi
 
-  while getopts ":h" opt; do
-  case $opt in
-    h) show_help; exit 0 ;;
-    \?)
-      err "Invalid option: -$OPTARG"
-      show_help
-      exit 1
-      ;;
+  local opt
+  while getopts ":hd:e:" opt; do
+    case "$opt" in
+      h) show_help; exit 0 ;;
+      d)
+        top_dir="$OPTARG"
+        if [[ ! -d "${top_dir}" ]]; then
+          err "Directory not found: ${top_dir}"
+          echo
+          show_help
+          exit 1
+        fi
+        ;;
+      # strip trailing '/' from the argument if present
+      e) excluded_dirs+=("${OPTARG%/}") ;;
+      \?)
+        err "Invalid option: -$OPTARG"
+        show_help
+        exit 1
+        ;;
     esac
   done
 }
 
-get_git_repos() {
+_check_excluded_dirs() {
+  # MODIFY -> excluded_dirs (array)
+  # iterate through the excluded directories array and validate
+  # remove from excluded_dirs array if non-valid
+  local d
+  for ((d=0; d<${#excluded_dirs[@]}; d++)); do
+    if [[ ! -d "${excluded_dirs[$d]}" ]]; then
+      err "Directory not found: ${excluded_dirs[$d]}... omitting"
+      unset "excluded_dirs[$d]"
+      ((d--))
+    fi
+  done
+}
+
+fetch_git_repos() {
   # find all .git repositories under $1 path and place them into the array
+  local repo_dir
   while IFS= read -r repo_dir; do
     git_repos+=("${repo_dir}")
-  done < <(find "${1}" -type d -name ".git" -not -path "*/.*/*" \
-                -exec dirname {} \; 2>/dev/null)
+  done < <(find "$1" -type d -name ".git" -exec dirname {} \; 2>/dev/null)
+}
+
+_remove_excluded_dirs() {
+  # MODIFY -> git_repos (array) VIA -> excluded_dirs (array)
+  # removes directories stated in excluded_dirs from git_repos
+  local d
+  # Iterate over repo_dirs
+  for d in "${excluded_dirs[@]}"; do
+    # shellcheck disable=SC2206
+    git_repos=(${git_repos[@]/${d}*})
+  done
 }
 
 ### main script flow
 # parse options
+declare top_dir
+declare -a excluded_dirs
 parse_options "$@"
 
-# check for existance if $1; if it doesn't exist, set $1 to pwd
-if [[ -z "$1" ]]; then
-  set -- .
+# check for existance of $top_dir;
+# if it wasn't set my an argument, set it to pwd
+if [[ -z "$top_dir" ]]; then
+  top_dir=.
 fi
 
-# make sure that $1 is a valid directory
-if [[ ! -d "${1}" ]]; then
-  err "${1} is not a valid directory."
-  exit 1
-fi
+# validate excluded directories variable, removing invalid arguments
+_check_excluded_dirs
 
-get_git_repos "$1"
-echo
+# fetch the git repositories and assign to git_repos
+declare -a git_repos
+fetch_git_repos "$top_dir"
 
-# iterate through the array created in get_git_repos() and show git status
-for d in "${git_repos[@]}"; do
+# remove excluded directories from git_repos
+_remove_excluded_dirs
+
+# iterate through the array created in fetch_git_repos() and show git status
+for r in "${git_repos[@]}"; do
   printf -- "--- "
-  printf "${MAGENTA}%s${RESET}\n" "${d%%\/.git}"
-  cd "${d}" || exit 1
+  printf "${magenta}%s${reset}\n" "${r%%\/.git}"
+  cd "${r}" || exit 1
   git status
   printf -- "---\n\n"
   cd - >/dev/null 2>&1 || exit 1

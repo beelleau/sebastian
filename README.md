@@ -42,14 +42,22 @@ ssh to each host in "/tmp/hostlist" as the user "larry" and run the command `gre
 
 --- usage  
 ```
-Usage: gitstat [/path/to/directory]
+Usage: gitstat [-d <top level directory>] [-e <excluded directory>]
 Options:
   -h, --help    Show this help menu
+  -d <dir>      Specify the top level directory to search from
+  -e <dir>      Specify a directory to exclude from results
 ```
 
 --- examples  
 `gitstat` or `gitstat .`  
 run the command in your pwd.  
 
-`gitstat /opt`  
-run the command in "/opt".
+`gitstat -d /opt`  
+run the command in "/opt".  
+
+`gitstat -e ./.emacs.d/`  
+run the command in your pwd, and exclude ".emacs.d/".  
+
+`gitstat -d ~ -e ~/.emacs.d -e ~/tmp `  
+run the command in your home directory, excluding "~/.emacs.d" and "~/tmp".
