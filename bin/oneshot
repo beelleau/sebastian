@@ -78,8 +78,8 @@ file2array() {
 
 ### main script flow
 # parse options and arguments; assign values
-format_style="0"
-username="${USER}"
+declare format_style="0"
+declare username="${USER}"
 parse_options "$@"
 shift $((OPTIND - 1)) # shift $@ past optional flags
 
@@ -103,7 +103,7 @@ declare -a host_array
 file2array "host_array" "$1"
 
 # assemble the commands to pass into ssh, add "true" to handle ssh errors
-cmd_array=("${@:2}" "2>&1" "||" "true")
+declare -a cmd_array=("${@:2}" "2>&1" "||" "true")
 
 # adhere to format style chosen, and use ssh to run command(s) on remote hosts
 case "$format_style" in
