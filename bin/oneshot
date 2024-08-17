@@ -20,7 +20,7 @@ show_help() {
   echo "  -u <user>     Specify SSH username"
 }
 
-parse_options_prevent_me() {
+_parse_options_prevent_me() {
   # called in parse_options()
   # prevents mutually exclusive options from being requested in the same command
   # uses $mutually_exclusive_options
@@ -40,7 +40,7 @@ parse_options() {
   fi
 
   # set a local variable that prevents mutually exclusive options
-  # use with parse_options_prevent_me function
+  # use with _parse_options_prevent_me function
   local mutually_exclusive_options=
   local opt
 
@@ -48,12 +48,12 @@ parse_options() {
     case "$opt" in
       h) show_help; exit 0 ;;
       a)
-        parse_options_prevent_me
+        _parse_options_prevent_me
         format_style="1"
         mutually_exclusive_options="1"
         ;;
       c)
-        parse_options_prevent_me
+        _parse_options_prevent_me
         format_style="2"
         mutually_exclusive_options="1"
         ;;

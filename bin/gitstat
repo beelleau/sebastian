@@ -43,7 +43,14 @@ parse_options() {
         fi
         ;;
       # strip trailing '/' from the argument if present
-      e) excluded_dirs+=("${OPTARG%/}") ;;
+      e)
+        local exd
+        exd="${OPTARG%/}"
+        if [[ ! "${exd}" =~ ^(/|\.\.?/) ]]; then
+          exd="./${exd}"
+        fi
+        excluded_dirs+=("${exd}")
+        ;;
       \?)
         err "Invalid option: -$OPTARG"
         show_help
