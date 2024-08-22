@@ -3,6 +3,33 @@ Contains Bash scripts I've written to help with small tasks.
 
 ---
 
+### gitstat
+`gitstat` finds all git repositories in your current directory, or under a specified directory. It prints the output of the `git status` command for each repository found.  
+
+--- usage  
+```
+Usage: gitstat [-d <top level directory>] [-e <excluded directory>]
+Options:
+  -h, --help    Show this help menu
+  -d <dir>      Specify the top level directory to search from
+  -i <dir>      Ignore a specific directory from results (repeatable)
+```
+
+--- examples  
+`gitstat` or `gitstat .`  
+run the command in your pwd.  
+
+`gitstat -d /opt`  
+run the command in "/opt".  
+
+`gitstat -i .emacs.d/`  
+run the command in your pwd and ignore ".emacs.d/".  
+
+`gitstat -d ~ -i ~/.emacs.d -i ~/tmp `  
+run the command in your home directory, ignoring `~/.emacs.d` and `~/tmp`.  
+
+---
+
 ### oneshot
 `oneshot` allows you to run a command against a list of remote hosts.  
 
@@ -33,31 +60,4 @@ ssh to each hosts in "/var/tmp/hostlist.txt" and run the command `ls -ltr /var/l
 ssh to each host in "./hostlist" as the user "admin" and run the command `uname -r`. Output in a CSV format.  
 
 `oneshot -c -u larry /tmp/hostlist "grep -i 'pretty' /etc/os-release | cut -d '=' -f2 | tr -d '\"'" | tee output.csv`  
-ssh to each host in "/tmp/hostlist" as the user "larry" and run the command `grep -i 'pretty' /etc/os-release | cut -d '=' -f2 | tr -d '"'` while using `tee` to write the output to the file "output.csv" and to your terminal. Notice the escape character before the double-quote within the command.  
-
----
-
-### gitstat
-`gitstat` finds all git repositories in your current directory, or under a specified directory. It prints the output of the `git status` command for each repository found.  
-
---- usage  
-```
-Usage: gitstat [-d <top level directory>] [-e <excluded directory>]
-Options:
-  -h, --help    Show this help menu
-  -d <dir>      Specify the top level directory to search from
-  -e <dir>      Specify a directory to exclude from results
-```
-
---- examples  
-`gitstat` or `gitstat .`  
-run the command in your pwd.  
-
-`gitstat -d /opt`  
-run the command in "/opt".  
-
-`gitstat -e .emacs.d/`  
-run the command in your pwd, and exclude ".emacs.d/".  
-
-`gitstat -d ~ -e ~/.emacs.d -e ~/tmp `  
-run the command in your home directory, excluding `~/.emacs.d` and `~/tmp`.
+ssh to each host in "/tmp/hostlist" as the user "larry" and run the command `grep -i 'pretty' /etc/os-release | cut -d '=' -f2 | tr -d '"'` while using `tee` to write the output to the file "output.csv" and to your terminal. Notice the escape character before the double-quote within the command.

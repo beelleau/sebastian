@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # gitstat | find git repos and print git status
-# requires: bash 3.2+, find, git
+# requires: bash 3.2+, git, find
 
 declare magenta="\033[0;35m"
 declare reset="\033[0m"
@@ -19,7 +19,7 @@ show_help() {
   echo "Options:"
   echo "  -h, --help    Show this help menu"
   echo "  -d <dir>      Specify the top level directory to search from"
-  echo "  -e <dir>      Specify a directory to exclude from results"
+  echo "  -i <dir>      Ignore a specific directory from results (repeatable)"
 }
 
 parse_options() {
@@ -30,7 +30,7 @@ parse_options() {
   fi
 
   local opt
-  while getopts ":hd:e:" opt; do
+  while getopts ":hd:i:" opt; do
     case "$opt" in
       h) show_help; exit 0 ;;
       d)
@@ -43,7 +43,7 @@ parse_options() {
         fi
         ;;
       # strip trailing '/' from the argument if present
-      e)
+      i)
         local exd
         exd="${OPTARG%/}"
         if [[ ! "${exd}" =~ ^(/|\.\.?/) ]]; then
@@ -100,7 +100,7 @@ declare -a excluded_dirs
 parse_options "$@"
 
 # check for existance of $top_dir;
-# if it wasn't set my an argument, set it to pwd
+# if it wasn't set by an argument, set it to pwd
 if [[ -z "$top_dir" ]]; then
   top_dir=.
 fi
