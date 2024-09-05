@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 #
-# oneshot | run a command on remote hosts
+# oneshot :: run a command on remote hosts
 # requires: bash 4.0+, ssh, gnu sed
-
-trap 'echo -e "\nSIGINT Received... exiting"; exit 130' SIGINT
 
 err() {
   # handle errors (send to standard error)
@@ -77,75 +75,80 @@ file2array() {
             <(sed -E '/^[#\[]|^$/d; s/^[[:space:]]+|[[:space:]]+$//g' "$2")
 }
 
-### main script flow
-# parse options and arguments; assign values
-declare format_style="0"
-declare username="${USER}"
-parse_options "$@"
-shift $((OPTIND - 1)) # shift $@ past optional flags
+main() {
+  trap 'echo -e "\nSIGINT Received... exiting"; exit 130' SIGINT
 
-# check for at least two arguments in after options are evaluated
-if [[ $# -ne 2 ]]; then
-  err "Two arguments required: <hostlist> \"<command>\""
-  echo "---"
-  show_help
-  exit 1
-fi
+  # parse options and arguments; assign values
+  local format_style="0"
+  local username="${USER}"
+  parse_options "$@"
+  shift $((OPTIND - 1)) # shift $@ past optional flags
 
-# check for $1, the hostfile, valid path
-if [[ ! -f "$1" ]]; then
-  err "$1 not found. Please validate hostlist path"
-  exit 3
-fi
+  # check for at least two arguments after options are shifted
+  if [[ $# -ne 2 ]]; then
+    err "Two arguments required: <hostlist> \"<command>\""
+    echo "---"
+    show_help
+    exit 1
+  fi
 
-# declare an array to iterate through for command
-declare -a host_array
-# place the hostfile into an array, parsing using file2array
-file2array "host_array" "$1"
+  # check for $1, the hostfile, valid path
+  if [[ ! -f "$1" ]]; then
+    err "$1 not found. Please validate hostlist path"
+    exit 3
+  fi
 
-# assemble the commands to pass into ssh, add "true" to handle ssh errors
-declare -a cmd_array=("${@:2}" "2>&1" "||" "true")
+  # create an array to iterate through for command
+  local -a host_array
+  # place the hostfile into an array, parsing using file2array function
+  file2array "host_array" "$1"
 
-# adhere to format style chosen, and use ssh to run command(s) on remote hosts
-case "$format_style" in
-  0)
-    # no formatting, just passing stdout
-    for hostname in "${host_array[@]}"; do
-      cmd_output=$(ssh -nq -o StrictHostKeychecking=no -o ConnectTimeout=10 \
-                       "${username}"@"${hostname}" "${cmd_array[@]}")
-      if [[ $? -eq 255 ]]; then
-        err "Connection to ${hostname} failed"
-      else
-        echo "$cmd_output"
-      fi
-    done
-    ;;
-  1)
-    # "-a", hostname and then a line break, extra blank line at end
-    for hostname in "${host_array[@]}"; do
-      echo "${hostname}:"
-      cmd_output=$(ssh -nq -o StrictHostKeychecking=no -o ConnectTimeout=10 \
-                       "${username}"@"${hostname}" "${cmd_array[@]}")
-      if [[ $? -eq 255 ]]; then
-        err "Connection to ${hostname} failed"
-      else
-       echo "$cmd_output"
-      fi
-      echo ""
-    done
-    ;;
-  2)
-    # "-c", csv format: {hostname},{stdout}
-    echo "hostname,output"
-    for hostname in "${host_array[@]}"; do
-      echo -n "${hostname},"
-      cmd_output=$(ssh -nq -o StrictHostKeychecking=no -o ConnectTimeout=10 \
-                       "${username}"@"${hostname}" "${cmd_array[@]}")
-      if [[ $? -eq 255 ]]; then
-        err "Connection to ${hostname} failed"
-      else
-        echo "$cmd_output"
-      fi
-    done
-    ;;
-esac
+  # assemble the commands to pass into ssh, add "true" to handle ssh errors
+  local -a cmd_array=("${@:2}" "2>&1" "||" "true")
+
+  # adhere to format style chosen, and use ssh to run command(s) on remote hosts
+  case "$format_style" in
+    0)
+      # no formatting, just passing stdout
+      for hostname in "${host_array[@]}"; do
+        cmd_output=$(ssh -nq -o StrictHostKeychecking=no -o ConnectTimeout=10 \
+                         "${username}"@"${hostname}" "${cmd_array[@]}")
+        if [[ $? -eq 255 ]]; then
+          err "Connection to ${hostname} failed"
+        else
+          echo "$cmd_output"
+        fi
+      done
+      ;;
+    1)
+      # "-a", hostname and then a line break, extra blank line at end
+      for hostname in "${host_array[@]}"; do
+        echo "${hostname}:"
+        cmd_output=$(ssh -nq -o StrictHostKeychecking=no -o ConnectTimeout=10 \
+                         "${username}"@"${hostname}" "${cmd_array[@]}")
+        if [[ $? -eq 255 ]]; then
+          err "Connection to ${hostname} failed"
+        else
+         echo "$cmd_output"
+        fi
+        echo ""
+      done
+      ;;
+    2)
+      # "-c", csv format: {hostname},{stdout}
+      echo "hostname,output"
+      for hostname in "${host_array[@]}"; do
+        echo -n "${hostname},"
+        cmd_output=$(ssh -nq -o StrictHostKeychecking=no -o ConnectTimeout=10 \
+                         "${username}"@"${hostname}" "${cmd_array[@]}")
+        if [[ $? -eq 255 ]]; then
+          err "Connection to ${hostname} failed"
+        else
+          echo "$cmd_output"
+        fi
+      done
+      ;;
+  esac
+}
+
+main "$@"
