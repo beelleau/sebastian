@@ -13,6 +13,7 @@ Options:
   -h, --help    Show this help menu
   -d <dir>      Specify the top level directory to search from
   -i <dir>      Ignore a specific directory from results (repeatable)
+  -l            Only list git repos, and skip default action
 ```
 
 --- examples  
@@ -27,6 +28,9 @@ run the command in your pwd and ignore ".emacs.d/".
 
 `gitstat -d ~ -i ~/.emacs.d -i ~/tmp `  
 run the command in your home directory, ignoring `~/.emacs.d` and `~/tmp`.  
+
+`gitstat -l -i tmp/`  
+run the command to just list git directories, ignoring any directories under `./tmp/`
 
 ---
 

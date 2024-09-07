@@ -3,21 +3,30 @@
 # gitstat :: find git repos and print git status
 # requires: bash 3.2+, git, find
 
+trap 'echo -e "\nSIGINT Received... exiting"; exit 130' SIGINT
+
+# global variables
+declare magenta="\033[0;35m"
+declare reset="\033[0m"
+
 err() {
   # handle errors (send to standard error)
   echo "$*" >&2
 }
 
 show_help() {
-  # help text
+  # help option text
   echo "Usage: ${0##*/} [-d <top level directory>] [-e <excluded directory>]"
   echo "Options:"
   echo "  -h, --help    Show this help menu"
   echo "  -d <dir>      Specify the top level directory to search from"
   echo "  -i <dir>      Ignore a specific directory from results (repeatable)"
+  echo "  -l            Only list git repos, and skip default action"
 }
 
 parse_options() {
+  # parse arguments and assign variables, arrays
+
   # check for long "--help"
   if [[ "$1" == "--help" ]]; then
     show_help
@@ -25,7 +34,7 @@ parse_options() {
   fi
 
   local opt
-  while getopts ":hd:i:" opt; do
+  while getopts ":hd:i:l" opt; do
     case "$opt" in
       h) show_help; exit 0 ;;
       d)
@@ -39,13 +48,14 @@ parse_options() {
         ;;
       i)
         # strip trailing '/' from the argument if present
-        local exd
-        exd="${OPTARG%/}"
-        if [[ ! "${exd}" =~ ^(/|\.\.?/) ]]; then
-          exd="./${exd}"
+        local s
+        s="${OPTARG%/}"
+        if [[ ! "${s}" =~ ^(/|\.\.?/) ]]; then
+          s="./${s}"
         fi
-        excluded_dirs+=("${exd}")
+        excluded_dirs+=("${s}")
         ;;
+      l) opt_list="1" ;;
       \?)
         err "Invalid option: -$OPTARG"
         show_help
@@ -55,22 +65,27 @@ parse_options() {
   done
 }
 
-fetch_git_repos() {
-  # find all .git repositories under $1 path and place them into the array
-  local repo_dir
-  while IFS= read -r repo_dir; do
-    git_repos+=("${repo_dir}")
+_fetch_git_repos() {
+  # find all .git repositories under $1 path and place them into an array
+  #
+  # ARG: $1 directory
+  # RET: git_repos
+
+  local d
+  while IFS= read -r d; do
+    git_repos+=("${d}")
   done < <(find "$1" -type d -name ".git" -exec dirname {} \; 2>/dev/null)
 }
 
 _check_excluded_dirs() {
-  # MODIFY -> excluded_dirs (array)
-  # iterate through the excluded directories array and validate
-  # remove from excluded_dirs array if non-valid
+  # check excluded directories and remove from excluded_dirs array if non-valid
+  #
+  # MOD: excluded_dirs (array)
+
   local d
   for ((d=0; d<${#excluded_dirs[@]}; d++)); do
     if [[ ! -d "${excluded_dirs[$d]}" ]]; then
-      err "Directory not found: ${excluded_dirs[$d]}... omitting"
+      err "Directory not found: ${excluded_dirs[$d]}."
       unset "excluded_dirs[$d]"
       ((d--))
     fi
@@ -78,24 +93,48 @@ _check_excluded_dirs() {
 }
 
 _remove_excluded_dirs() {
-  # MODIFY -> git_repos (array) VIA -> excluded_dirs (array)
   # removes directories stated in excluded_dirs from git_repos
+  #
+  # MOD: git_repos (array) USE: excluded_dirs (array)
+
   local d
-  # Iterate over repo_dirs
+  # Iterate over git_repos
   for d in "${excluded_dirs[@]}"; do
     # shellcheck disable=SC2206
     git_repos=(${git_repos[@]/${d}*})
   done
 }
 
+gitstat_list() {
+  # iterate through found git repos and print their paths
+  #
+  # ARG: $1 git_repos (array)
+
+  local d
+  for d in "$@"; do
+    echo "$d"
+  done
+}
+
+gitstat_run() {
+  # iterate through found git repos and print their git status
+  #
+  # ARG: $1 git_repos (array)
+
+  local d
+  for d in "$@"; do
+    printf -- "--- "
+    printf "${magenta}%s${reset}\n" "${d%%\/.git}"
+    cd "${d}" || exit 1
+    git status
+    printf -- "---\n\n"
+    cd - >/dev/null 2>&1 || exit 1
+  done
+}
+
 main() {
-  trap 'echo -e "\nSIGINT Received... exiting"; exit 130' SIGINT
-
-  # colors
-  local magenta="\033[0;35m"
-  local reset="\033[0m"
-
   # parse options
+  local opt_list
   local top_dir
   local -a excluded_dirs
   parse_options "$@"
@@ -106,25 +145,24 @@ main() {
     top_dir=.
   fi
 
-  # validate excluded directories variable, removing invalid arguments
-  _check_excluded_dirs
-
   # fetch the git repositories and assign to git_repos
   local -a git_repos
-  fetch_git_repos "$top_dir"
+  _fetch_git_repos "$top_dir"
+
+  # validate excluded_dirs array, removing invalid arguments
+  _check_excluded_dirs
 
   # remove excluded directories from git_repos
   _remove_excluded_dirs
 
-  # iterate through the array created in fetch_git_repos() and show git status
-  for r in "${git_repos[@]}"; do
-    printf -- "--- "
-    printf "${magenta}%s${reset}\n" "${r%%\/.git}"
-    cd "${r}" || exit 1
-    git status
-    printf -- "---\n\n"
-    cd - >/dev/null 2>&1 || exit 1
-  done
+  # run list output if specified
+  if [[ "$opt_list" -eq 1 ]]; then
+    gitstat_list "${git_repos[@]}"
+    exit 0
+  fi
+
+  # run primary output
+  gitstat_run "${git_repos[@]}"
 }
 
 main "$@"
