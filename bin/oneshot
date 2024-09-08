@@ -3,13 +3,15 @@
 # oneshot :: run a command on remote hosts
 # requires: bash 4.0+, ssh, gnu sed
 
+trap 'echo -e "\nSIGINT Received... exiting"; exit 130' SIGINT
+
 err() {
   # handle errors (send to standard error)
   echo "$*" >&2
 }
 
 show_help() {
-  # help text
+  # help option text
   echo "Usage: ${0##*/} [-a|-c] [-u <username>] <hostfile> \"<command>\""
   echo "Options:"
   echo "  -h, --help    Show this help menu"
@@ -39,10 +41,9 @@ parse_options() {
 
   # set a local variable that prevents mutually exclusive options
   # use with _parse_options_prevent_me function
-  local mutually_exclusive_options=
+  local mutually_exclusive_options
   local opt
-
-  while getopts "hacu:" opt; do
+  while getopts ":hacu:" opt; do
     case "$opt" in
       h) show_help; exit 0 ;;
       a)
@@ -69,15 +70,15 @@ file2array() {
   # convert each line in a file to an array element
   # skip lines that start with # or [, skip blank lines
   # trim leading and trailing whitespace
-  # ARGS: $1 = array_name, $2 = filename
-  # RET: array
+  #
+  # ARG: $1 array_name
+  # ARG: $2 filename
+  # RET: array $1
   readarray -t "$1" < \
             <(sed -E '/^[#\[]|^$/d; s/^[[:space:]]+|[[:space:]]+$//g' "$2")
 }
 
 main() {
-  trap 'echo -e "\nSIGINT Received... exiting"; exit 130' SIGINT
-
   # parse options and arguments; assign values
   local format_style="0"
   local username="${USER}"
@@ -110,11 +111,11 @@ main() {
   case "$format_style" in
     0)
       # no formatting, just passing stdout
-      for hostname in "${host_array[@]}"; do
-        cmd_output=$(ssh -nq -o StrictHostKeychecking=no -o ConnectTimeout=10 \
-                         "${username}"@"${hostname}" "${cmd_array[@]}")
+      for h in "${host_array[@]}"; do
+        cmd_output=$(ssh -nq -o PasswordAuthentication=no -o ConnectTimeout=10 \
+                         "${username}"@"${h}" "${cmd_array[@]}")
         if [[ $? -eq 255 ]]; then
-          err "Connection to ${hostname} failed"
+          err "Connection to ${h} failed"
         else
           echo "$cmd_output"
         fi
@@ -122,12 +123,12 @@ main() {
       ;;
     1)
       # "-a", hostname and then a line break, extra blank line at end
-      for hostname in "${host_array[@]}"; do
-        echo "${hostname}:"
-        cmd_output=$(ssh -nq -o StrictHostKeychecking=no -o ConnectTimeout=10 \
-                         "${username}"@"${hostname}" "${cmd_array[@]}")
+      for h in "${host_array[@]}"; do
+        echo "${h}:"
+        cmd_output=$(ssh -nq -o PasswordAuthentication=no -o ConnectTimeout=10 \
+                         "${username}"@"${h}" "${cmd_array[@]}")
         if [[ $? -eq 255 ]]; then
-          err "Connection to ${hostname} failed"
+          err "Connection to ${h} failed"
         else
          echo "$cmd_output"
         fi
@@ -137,12 +138,12 @@ main() {
     2)
       # "-c", csv format: {hostname},{stdout}
       echo "hostname,output"
-      for hostname in "${host_array[@]}"; do
-        echo -n "${hostname},"
-        cmd_output=$(ssh -nq -o StrictHostKeychecking=no -o ConnectTimeout=10 \
-                         "${username}"@"${hostname}" "${cmd_array[@]}")
+      for h in "${host_array[@]}"; do
+        echo -n "${h},"
+        cmd_output=$(ssh -nq -o PasswordAuthentication=no -o ConnectTimeout=10 \
+                         "${username}"@"${h}" "${cmd_array[@]}")
         if [[ $? -eq 255 ]]; then
-          err "Connection to ${hostname} failed"
+          err "Connection to ${h} failed"
         else
           echo "$cmd_output"
         fi
