@@ -12,11 +12,12 @@ err() {
 
 show_help() {
   # help option text
-  echo "Usage: ${0##*/} [-a|-c] [-u <username>] <hostfile> \"<command>\""
+  echo "Usage: ${0##*/} [-a|-c|-t] [-u <username>] <hostfile> \"<command>\""
   echo "Options:"
   echo "  -h, --help    Show this help menu"
   echo "  -a            Show output in 'view' format, with line-breaks"
   echo "  -c            Show output in CSV format {hostname},{output}"
+  echo "  -t            Conduct a ssh connection test against <hostfile>"
   echo "  -u <user>     Specify SSH username"
 }
 
@@ -25,7 +26,7 @@ _parse_options_prevent_me() {
   # prevents mutually exclusive options from being requested in the same command
   # uses $mutually_exclusive_options
   if [[ "$mutually_exclusive_options" ]]; then
-    err "Conflicting options (-a) and (-c) both used."
+    err "Conflicting options (-a), (-c), and/or (-t) used."
     echo "---"
     show_help
     exit 1
@@ -43,18 +44,23 @@ parse_options() {
   # use with _parse_options_prevent_me function
   local mutually_exclusive_options
   local opt
-  while getopts ":hacu:" opt; do
+  while getopts ":hactu:" opt; do
     case "$opt" in
       h) show_help; exit 0 ;;
       a)
         _parse_options_prevent_me
-        format_style="1"
         mutually_exclusive_options="1"
+        format_style="1"
         ;;
       c)
         _parse_options_prevent_me
-        format_style="2"
         mutually_exclusive_options="1"
+        format_style="2"
+        ;;
+      t)
+        _parse_options_prevent_me
+        mutually_exclusive_options="1"
+        format_style="3"
         ;;
       u) username="$OPTARG" ;;
       \?)
@@ -74,8 +80,87 @@ file2array() {
   # ARG: $1 array_name
   # ARG: $2 filename
   # RET: array $1
+
   readarray -t "$1" < \
             <(sed -E '/^[#\[]|^$/d; s/^[[:space:]]+|[[:space:]]+$//g' "$2")
+}
+
+_oneshot_run_zero() {
+  # neither -a or -c options, just stdout
+  #
+  # REQ: host_array
+  # REQ: cmd_array
+  # REQ: username
+
+  local h cmd_output
+  for h in "${host_array[@]}"; do
+    if cmd_output=$(ssh -nq -o StrictHostKeyChecking=accept-new \
+                        -o PasswordAuthentication=no -o ConnectTimeout=10 \
+                        "${username}"@"${h}" "${cmd_array[@]}"); then
+      echo "${cmd_output}"
+    else
+      err "Connection to ${h} failed"
+    fi
+  done
+}
+
+_oneshot_run_one() {
+  # -a option, hostname and then a line break, extra blank line at end
+  #
+  # REQ: host_array
+  # REQ: cmd_array
+  # REQ: username
+
+  local h cmd_output
+  for h in "${host_array[@]}"; do
+    echo "${h}:"
+    if cmd_output=$(ssh -nq -o StrictHostKeyChecking=accept-new \
+                        -o PasswordAuthentication=no -o ConnectTimeout=10 \
+                        "${username}"@"${h}" "${cmd_array[@]}"); then
+      echo "${cmd_output}"
+    else
+      err "Connection to ${h} failed"
+    fi
+    echo ""
+  done
+}
+
+_oneshot_run_two() {
+  # -c option, csv format: {hostname},{stdout}
+  #
+  # REQ: host_array
+  # REQ: cmd_array
+  # REQ: username
+
+  local h cmd_output
+  echo "hostname,output"
+  for h in "${host_array[@]}"; do
+    echo -n "${h},"
+    if cmd_output=$(ssh -nq -o StrictHostKeyChecking=accept-new \
+                        -o PasswordAuthentication=no -o ConnectTimeout=10 \
+                        "${username}"@"${h}" "${cmd_array[@]}"); then
+      echo "${cmd_output}"
+    else
+      err "Connection failed"
+    fi
+  done
+}
+
+_oneshot_run_test() {
+  # -t option, test connectivity to hostlist
+  #
+  # REQ: host_array
+  # REQ: username
+
+  local h cmd_output
+  for h in "${host_array[@]}"; do
+    if ! cmd_output=$(ssh -n -o StrictHostKeyChecking=accept-new \
+                          -o PasswordAuthentication=no -o ConnectTimeout=10 \
+                          "${username}"@"${h}" "true" 2>&1); then
+      err "${h} failed with error -> ${cmd_output}"
+      echo ""
+    fi
+  done
 }
 
 main() {
@@ -85,12 +170,16 @@ main() {
   parse_options "$@"
   shift $((OPTIND - 1)) # shift $@ past optional flags
 
-  # check for at least two arguments after options are shifted
-  if [[ $# -ne 2 ]]; then
+  # check for at least two arguments after options are shifted, unless
+  # -t option is used
+  if [[ $# -ne 2 ]] && [[ "$format_style" -ne 3 ]]; then
     err "Two arguments required: <hostlist> \"<command>\""
     echo "---"
     show_help
     exit 1
+  fi
+  if [[ $# -eq 2 ]] && [[ "$format_style" -eq 3 ]]; then
+    echo "-t option used, entered command is ignored"
   fi
 
   # check for $1, the hostfile, valid path
@@ -99,55 +188,33 @@ main() {
     exit 3
   fi
 
-  # create an array to iterate through for command
   local -a host_array
   # place the hostfile into an array, parsing using file2array function
   file2array "host_array" "$1"
 
-  # assemble the commands to pass into ssh, add "true" to handle ssh errors
+  # assemble the commands to pass into ssh, add "or true" to handle ssh errors
   local -a cmd_array=("${@:2}" "2>&1" "||" "true")
+  if [[ "$format_style" -eq 3 ]]; then
+    cmd_array=("echo" "2>&1" "||" "true")
+  fi
 
   # adhere to format style chosen, and use ssh to run command(s) on remote hosts
   case "$format_style" in
     0)
-      # no formatting, just passing stdout
-      for h in "${host_array[@]}"; do
-        cmd_output=$(ssh -nq -o PasswordAuthentication=no -o ConnectTimeout=10 \
-                         "${username}"@"${h}" "${cmd_array[@]}")
-        if [[ $? -eq 255 ]]; then
-          err "Connection to ${h} failed"
-        else
-          echo "$cmd_output"
-        fi
-      done
+      # neither -a or -c options used, just stdout
+      _oneshot_run_zero
       ;;
     1)
-      # "-a", hostname and then a line break, extra blank line at end
-      for h in "${host_array[@]}"; do
-        echo "${h}:"
-        cmd_output=$(ssh -nq -o PasswordAuthentication=no -o ConnectTimeout=10 \
-                         "${username}"@"${h}" "${cmd_array[@]}")
-        if [[ $? -eq 255 ]]; then
-          err "Connection to ${h} failed"
-        else
-         echo "$cmd_output"
-        fi
-        echo ""
-      done
+      # -a, hostname and then a line break, extra blank line at end
+      _oneshot_run_one
       ;;
     2)
-      # "-c", csv format: {hostname},{stdout}
-      echo "hostname,output"
-      for h in "${host_array[@]}"; do
-        echo -n "${h},"
-        cmd_output=$(ssh -nq -o PasswordAuthentication=no -o ConnectTimeout=10 \
-                         "${username}"@"${h}" "${cmd_array[@]}")
-        if [[ $? -eq 255 ]]; then
-          err "Connection to ${h} failed"
-        else
-          echo "$cmd_output"
-        fi
-      done
+      # -c, csv format: {hostname},{stdout}
+      _oneshot_run_two
+      ;;
+    3)
+      # -t, test connections
+      _oneshot_run_test
       ;;
   esac
 }

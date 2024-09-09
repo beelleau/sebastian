@@ -50,6 +50,7 @@ Options:
   -h, --help    Show this help menu
   -a            Show output in 'view' format, with line-breaks
   -c            Show output in CSV format {hostname},{output}
+  -t            Conduct a ssh connection test against <hostfile>
   -u <user>     Specify SSH username
 ```
 
@@ -64,4 +65,7 @@ ssh to each hosts in "/var/tmp/hostlist.txt" and run the command `ls -ltr /var/l
 ssh to each host in "./hostlist" as the user "admin" and run the command `uname -r`. Output in a CSV format.  
 
 `oneshot -c -u larry /tmp/hostlist "grep -i 'pretty' /etc/os-release | cut -d '=' -f2 | tr -d '\"'" | tee output.csv`  
-ssh to each host in "/tmp/hostlist" as the user "larry" and run the command `grep -i 'pretty' /etc/os-release | cut -d '=' -f2 | tr -d '"'` while using `tee` to write the output to the file "output.csv" and to your terminal. Notice the escape character before the double-quote within the command.
+ssh to each host in "/tmp/hostlist" as the user "larry" and run the command `grep -i 'pretty' /etc/os-release | cut -d '=' -f2 | tr -d '"'` while using `tee` to write the output to the file "output.csv" and to your terminal. Notice the escape character before the double-quote within the command.  
+
+`oneshot -t ../hostlist`  
+run the ssh "test" against `../hostlist`. You will automatically add new hosts' public keys to your `~/.ssh/known_hosts` file, and you will get a warning if a key has changed. Use this option to verify connectivity and/or conduct ssh related troubleshooting.
