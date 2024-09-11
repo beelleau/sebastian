@@ -8,7 +8,7 @@ Contains Bash scripts I've written to help with small tasks.
 
 --- usage  
 ```
-Usage: gitstat [-d <top level directory>] [-e <excluded directory>]
+Usage: gitstat [-d <top-level directory>] [-i <directory to ignore>]
 Options:
   -h, --help    Show this help menu
   -d <dir>      Specify the top level directory to search from

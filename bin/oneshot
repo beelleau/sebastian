@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 #
 # oneshot :: run a command on remote hosts
-# requires: bash 4.0+, ssh, gnu sed
+# requires: bash 4.0+, ssh, sed
 
 trap 'echo -e "\nSIGINT Received... exiting"; exit 130' SIGINT
 
 err() {
-  # handle errors (send to standard error)
+  # send errors standard error
   echo "$*" >&2
 }
 
@@ -24,7 +24,9 @@ show_help() {
 _parse_options_prevent_me() {
   # called in parse_options()
   # prevents mutually exclusive options from being requested in the same command
-  # uses $mutually_exclusive_options
+  #
+  # REQ: $mutually_exclusive_options
+
   if [[ "$mutually_exclusive_options" ]]; then
     err "Conflicting options (-a), (-c), and/or (-t) used."
     echo "---"
@@ -72,14 +74,15 @@ parse_options() {
   done
 }
 
-file2array() {
+hostfile2array() {
   # convert each line in a file to an array element
   # skip lines that start with # or [, skip blank lines
   # trim leading and trailing whitespace
+  # : array name for $1 must be declared before function is called
   #
-  # ARG: $1 array_name
-  # ARG: $2 filename
-  # RET: array $1
+  # ARG $1: output array name
+  # ARG $2: filename
+  # RET: array named in $1
 
   readarray -t "$1" < \
             <(sed -E '/^[#\[]|^$/d; s/^[[:space:]]+|[[:space:]]+$//g' "$2")
@@ -88,9 +91,9 @@ file2array() {
 _oneshot_run_zero() {
   # neither -a or -c options, just stdout
   #
-  # REQ: host_array
-  # REQ: cmd_array
-  # REQ: username
+  # REQ: $host_array[]
+  # REQ: $cmd_array[]
+  # REQ: $username
 
   local h cmd_output
   for h in "${host_array[@]}"; do
@@ -107,9 +110,9 @@ _oneshot_run_zero() {
 _oneshot_run_one() {
   # -a option, hostname and then a line break, extra blank line at end
   #
-  # REQ: host_array
-  # REQ: cmd_array
-  # REQ: username
+  # REQ: $host_array[]
+  # REQ: $cmd_array[]
+  # REQ: $username
 
   local h cmd_output
   for h in "${host_array[@]}"; do
@@ -128,9 +131,9 @@ _oneshot_run_one() {
 _oneshot_run_two() {
   # -c option, csv format: {hostname},{stdout}
   #
-  # REQ: host_array
-  # REQ: cmd_array
-  # REQ: username
+  # REQ: $host_array[]
+  # REQ: $cmd_array[]
+  # REQ: $username
 
   local h cmd_output
   echo "hostname,output"
@@ -147,10 +150,10 @@ _oneshot_run_two() {
 }
 
 _oneshot_run_test() {
-  # -t option, test connectivity to hostlist
+  # -t option, test connectivity to hosts in hostfile
   #
-  # REQ: host_array
-  # REQ: username
+  # REQ: $host_array[]
+  # REQ: $username
 
   local h cmd_output
   for h in "${host_array[@]}"; do
@@ -173,49 +176,41 @@ main() {
   # check for at least two arguments after options are shifted, unless
   # -t option is used
   if [[ $# -ne 2 ]] && [[ "$format_style" -ne 3 ]]; then
-    err "Two arguments required: <hostlist> \"<command>\""
+    err "Two arguments required: <hostfile> \"<command>\""
     echo "---"
     show_help
     exit 1
   fi
   if [[ $# -eq 2 ]] && [[ "$format_style" -eq 3 ]]; then
-    echo "-t option used, entered command is ignored"
+    err "-t option used, command entered is ignored"
   fi
 
   # check for $1, the hostfile, valid path
-  if [[ ! -f "$1" ]]; then
-    err "$1 not found. Please validate hostlist path"
+  if ! [[ -f "$1" ]]; then
+    err "$1 not found. Please validate hostfile path"
     exit 3
   fi
 
+  # place the hostfile into an array, parsing using hostfile2array function
   local -a host_array
-  # place the hostfile into an array, parsing using file2array function
-  file2array "host_array" "$1"
+  hostfile2array "host_array" "$1"
 
   # assemble the commands to pass into ssh, add "or true" to handle ssh errors
-  local -a cmd_array=("${@:2}" "2>&1" "||" "true")
-  if [[ "$format_style" -eq 3 ]]; then
-    cmd_array=("echo" "2>&1" "||" "true")
-  fi
+  local -a cmd_array
+  [[ "$format_style" -ne 3 ]] && cmd_array=("${@:2}" "2>&1" "||" "true")
+  # if "test" argument is used, use below $cmd_array[] values
+  [[ "$format_style" -eq 3 ]] && cmd_array=("true" "2>&1" "||" "true")
 
   # adhere to format style chosen, and use ssh to run command(s) on remote hosts
   case "$format_style" in
-    0)
-      # neither -a or -c options used, just stdout
-      _oneshot_run_zero
-      ;;
-    1)
-      # -a, hostname and then a line break, extra blank line at end
-      _oneshot_run_one
-      ;;
-    2)
-      # -c, csv format: {hostname},{stdout}
-      _oneshot_run_two
-      ;;
-    3)
-      # -t, test connections
-      _oneshot_run_test
-      ;;
+    # neither -a or -c options used, just stdout
+    0) _oneshot_run_zero ;;
+    # -a, hostname and then a line break, extra blank line at end
+    1) _oneshot_run_one ;;
+    # -c, csv format: {hostname},{stdout}
+    2) _oneshot_run_two ;;
+    # -t, test connections
+    3) _oneshot_run_test ;;
   esac
 }
 

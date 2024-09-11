@@ -10,13 +10,13 @@ declare magenta="\033[0;35m"
 declare reset="\033[0m"
 
 err() {
-  # handle errors (send to standard error)
+  # send errors to standard error
   echo "$*" >&2
 }
 
 show_help() {
   # help option text
-  echo "Usage: ${0##*/} [-d <top level directory>] [-e <excluded directory>]"
+  echo "Usage: ${0##*/} [-d <top-level directory>] [-i <directory to ignore>]"
   echo "Options:"
   echo "  -h, --help    Show this help menu"
   echo "  -d <dir>      Specify the top level directory to search from"
@@ -39,7 +39,7 @@ parse_options() {
       h) show_help; exit 0 ;;
       d)
         top_dir="$OPTARG"
-        if [[ ! -d "${top_dir}" ]]; then
+        if ! [[ -d "${top_dir}" ]]; then
           err "Directory not found: ${top_dir}"
           echo
           show_help
@@ -50,7 +50,7 @@ parse_options() {
         # strip trailing '/' from the argument if present
         local s
         s="${OPTARG%/}"
-        if [[ ! "${s}" =~ ^(/|\.\.?/) ]]; then
+        if ! [[ "${s}" =~ ^(/|\.\.?/) ]]; then
           s="./${s}"
         fi
         excluded_dirs+=("${s}")
@@ -68,8 +68,8 @@ parse_options() {
 _fetch_git_repos() {
   # find all .git repositories under $1 path and place them into an array
   #
-  # ARG: $1 directory
-  # RET: git_repos
+  # ARG $1: top-level directory
+  # RET: $git_repos[]
 
   local d
   while IFS= read -r d; do
@@ -80,11 +80,11 @@ _fetch_git_repos() {
 _check_excluded_dirs() {
   # check excluded directories and remove from excluded_dirs array if non-valid
   #
-  # MOD: excluded_dirs (array)
+  # MOD: $excluded_dirs[]
 
   local d
   for ((d=0; d<${#excluded_dirs[@]}; d++)); do
-    if [[ ! -d "${excluded_dirs[$d]}" ]]; then
+    if ! [[ -d "${excluded_dirs[$d]}" ]]; then
       err "Directory not found: ${excluded_dirs[$d]}."
       unset "excluded_dirs[$d]"
       ((d--))
@@ -95,7 +95,8 @@ _check_excluded_dirs() {
 _remove_excluded_dirs() {
   # removes directories stated in excluded_dirs from git_repos
   #
-  # MOD: git_repos (array) USE: excluded_dirs (array)
+  # MOD: $git_repos[]
+  # REQ: $excluded_dirs[]
 
   local d
   # Iterate over git_repos
@@ -105,21 +106,21 @@ _remove_excluded_dirs() {
   done
 }
 
-gitstat_list() {
-  # iterate through found git repos and print their paths
+print_array() {
+  # iterate through an array and print each element on a newline
   #
-  # ARG: $1 git_repos (array)
+  # ARG $1: array
 
-  local d
-  for d in "$@"; do
-    echo "$d"
+  local e
+  for e in "$@"; do
+    echo "$e"
   done
 }
 
 gitstat_run() {
   # iterate through found git repos and print their git status
   #
-  # ARG: $1 git_repos (array)
+  # ARG $1: array of git repo directories
 
   local d
   for d in "$@"; do
@@ -157,7 +158,7 @@ main() {
 
   # run list output if specified
   if [[ "$opt_list" -eq 1 ]]; then
-    gitstat_list "${git_repos[@]}"
+    print_array "${git_repos[@]}"
     exit 0
   fi
 
