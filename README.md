@@ -3,6 +3,31 @@ Contains Bash scripts I've written to help with small tasks.
 
 ---
 
+### classip
+`classip` is a IPv4 class information tool. It can print out information about class, public/private, and special IP ranges. Additionally, it can tell you more class information about a given IP address.  
+
+--- usage  
+```
+Usage: classip [-c -r -s] [<ip address>] ...
+Options:
+  -h, --help    Show this help menu
+  -c            Show all IP class ranges
+  -r            Show all private IP ranges
+  -s            Show all special IP ranges
+```
+
+--- examples  
+`classip -c`  
+print all classful IP ranges.  
+
+`classip -r 192.168.86.4`  
+print all classful private IP ranges, and describe the IP address 192.168.86.4.  
+  
+`classip -rcs 10.10.10.3 1.2.3.4 169.254.0.24`  
+print all classful information, and describe all IP address entered as arguments.
+
+---
+
 ### gitstat
 `gitstat` finds all git repositories in your current directory, or under a specified directory. It prints the output of the `git status` command for each repository found.  
 

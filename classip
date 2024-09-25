@@ -1,0 +1,232 @@
+#!/usr/bin/env bash
+#
+# classip :: ipv4 class information
+# requires: bash 4.0+
+
+trap 'echo -e "\nSIGINT Received... exiting"; exit 130' SIGINT
+
+err() {
+  # send errors to standard error
+  echo "$*" >&2
+}
+
+show_help() {
+  # help option text
+  echo "Usage: ${0##*/} [-c -r -s] [<ip address>] ..."
+  echo "Options:"
+  echo "  -h, --help    Show this help menu"
+  echo "  -c            Show all IP class ranges"
+  echo "  -r            Show all private IP ranges"
+  echo "  -s            Show all special IP ranges"
+  echo ""
+}
+
+parse_options() {
+  # parse arguments and assign variables, arrays
+
+  # check for long "--help"
+  if [[ "$1" == "--help" ]]; then
+    show_help
+    exit 0
+  fi
+
+  # c r s must be already delcared in parent function
+  local opt
+  while getopts ":hcrs" opt; do
+    case "$opt" in
+      h) show_help; exit 0 ;;
+      c) c="c" ;;
+      r) r="r" ;;
+      s) s="s" ;;
+      \?)
+        err "Invalid option: -$OPTARG"
+        show_help
+        exit 1
+        ;;
+    esac
+  done
+}
+
+print_class_info() {
+  # message echo'd to the terminal to see classes and ip ranges
+  #
+
+  echo "           All IP Ranges"
+  echo "------------------------------------"
+  echo " Class   Range"
+  echo "------------------------------------"
+  echo " A       0.0.0.0 - 127.255.255.255"
+  echo " B       128.0.0.0 - 191.255.255.255"
+  echo " C       192.0.0.0 - 223.168.255.255"
+  echo " D       224.0.0.0 - 239.255.255.255"
+  echo " E       240.0.0.0 - 255.255.255.255"
+  echo ""
+}
+
+print_private_info() {
+  # message echo'd to the terminal to see private ip ranges
+  #
+
+  echo "          Private IP Ranges"
+  echo "--------------------------------------"
+  echo " Class   Range"
+  echo "--------------------------------------"
+  echo " A       10.0.0.0 - 10.255.255.255"
+  echo " B       172.16.0.0 - 172.31.255.255"
+  echo " C       192.168.0.0 - 192.168.255.255"
+  echo " D       224.0.0.0 - 239.255.255.255"
+  echo " E       240.0.0.0 - 255.255.255.255"
+  echo ""
+}
+
+print_special_info() {
+  # message echo'd to the terminal to see special ip information
+  #
+
+  echo "            Special IPv4 Addresses"
+  echo "---------------------------------------------------"
+  echo " Type                 Range"
+  echo "---------------------------------------------------"
+  echo " Loopback             127.0.0.1 - 127.255.255.255"
+  echo " Link-local / APIPA   169.254.0.0 - 169.254.255.255"
+  echo " Multicast (Class D)  224.0.0.0 - 239.255.255.255"
+  echo " Reserved (Class E)   240.0.0.0 - 255.255.255.255"
+  echo ""
+}
+
+option_printer() {
+  # print output based on arguments/options
+  #
+  # ARG $1: options string
+
+  [[ "$1" =~ c|r|s ]] && echo ""
+  [[ "$1" =~ c ]] && print_class_info
+  [[ "$1" =~ r ]] && print_private_info
+  [[ "$1" =~ s ]] && print_special_info
+}
+
+validate_ip_address() {
+  # assess if a given ip address is a valid ipv4 address
+  #
+  # ARG $1: ip address
+
+  [[ "$1" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || return 1
+
+  local -a o_a
+  local i
+  IFS='.' read -r -a o_a <<< "$1"
+  for i in "${o_a[@]}"; do
+    ((i < 0 || i > 255)) && return 1
+  done
+
+  # return
+  return 0
+}
+
+get_ip_class() {
+  # determine the ip class (A, B, C, D, E)
+  #
+  # ARG $1: ip address
+  # RET: ip class
+
+  local i
+  i="${1%%.*}"
+
+  local c
+  if (( i >= 0 && i <= 127 )); then
+    c="A"
+  elif (( i >= 128 && i <= 191 )); then
+    c="B"
+  elif (( i >= 192 && i <= 223 )); then
+    c="C"
+  elif (( i >= 224 && i <= 239 )); then
+    c="D"
+  elif (( i >= 240 && i <= 255 )); then
+    c="E"
+  fi
+
+  # return
+  echo -n "$c"
+}
+
+get_ip_pripub() {
+  # determine if ip address is private or public
+  #
+  # ARG $1: ip address
+  # RET: private or public
+
+  local -a o_a
+  local t
+  IFS=. read -r -a o_a <<< "$1"
+
+  if (( o_a[0] == 10 )); then
+    t="private"
+  elif (( o_a[0] == 169 && o_a[1] == 254 )); then
+    t="private"
+  elif (( o_a[0] == 172 && o_a[1] >= 16 && o_a[1] <= 31 )); then
+    t="private"
+  elif (( o_a[0] == 192 && o_a[1] == 168 )); then
+    t="private"
+  elif (( o_a[0] >= 224 && o_a[0] <= 255 )); then
+    t="private"
+  else
+    t="public"
+  fi
+
+  # return
+  echo -n "$t"
+}
+
+get_ip_special() {
+  # determine if an ip address is a special address
+  # special addresses: loopback, link-local/apipa, multicast, reserved
+  #
+  # ARG $1: ip address
+  # RET: special ip type, or nothing
+
+  local -a o_a
+  local t
+  IFS=. read -r -a o_a <<< "$1"
+
+  if (( o_a[0] == 127 )); then
+    t="loopback"
+  elif (( o_a[0] == 169 && o_a[1] == 254 )); then
+    t="link-local"
+  elif (( o_a[0] >= 224 && o_a[0] <= 239 )); then
+    t="multicast"
+  elif (( o_a[0] >= 240 && o_a[0] <= 255 )); then
+    t="resvered"
+  fi
+
+  # return
+  echo -n "$t"
+}
+
+main() {
+  # check for at least one argument before getopts and shift
+  if [[ $# -le 0 ]]; then
+    err "One argument required: <option> and/or <ip address>"
+    echo "---"
+    show_help
+    exit 1
+  fi
+  local c r s
+  parse_options "$@"
+  shift $((OPTIND - 1)) # shift $@ past optional flags
+  option_printer "${c}${r}${s}"
+
+  local i ip_class ip_pripub ip_special
+  for i in "$@"; do
+    if ! validate_ip_address "$i"; then
+      err "\"${1}\" : Invalid IP address"
+      continue
+    fi
+    ip_class=$(get_ip_class "$i")
+    ip_pripub=$(get_ip_pripub "$i")
+    ip_special=$(get_ip_special "$i")
+
+    echo "${i} : ${ip_class} ${ip_pripub} ${ip_special}"
+  done
+}
+
+main "$@"
