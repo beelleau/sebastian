@@ -44,8 +44,7 @@ parse_options() {
 
   # set a local variable that prevents mutually exclusive options
   # use with _parse_options_prevent_me function
-  local mutually_exclusive_options
-  local opt
+  local opt mutually_exclusive_options
   while getopts ":hactu:" opt; do
     case "$opt" in
       h) show_help; exit 0 ;;
@@ -168,8 +167,9 @@ _oneshot_run_test() {
 
 main() {
   # parse options and arguments; assign values
-  local format_style="0"
-  local username="${USER}"
+  local format_style username
+  format_style="0"
+  username="${USER}"
   parse_options "$@"
   shift $((OPTIND - 1)) # shift $@ past optional flags
 
@@ -192,11 +192,9 @@ main() {
   fi
 
   # place the hostfile into an array, parsing using hostfile2array function
-  local -a host_array
+  local -a host_array cmd_array
   hostfile2array "host_array" "$1"
-
   # assemble the commands to pass into ssh, add "or true" to handle ssh errors
-  local -a cmd_array
   [[ "$format_style" -ne 3 ]] && cmd_array=("${@:2}" "2>&1" "||" "true")
   # if "test" argument is used, use below $cmd_array[] values
   [[ "$format_style" -eq 3 ]] && cmd_array=("true" "2>&1" "||" "true")
