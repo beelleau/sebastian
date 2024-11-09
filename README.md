@@ -1,5 +1,5 @@
 # My Bash scripts
-Contains Bash scripts I've written to help with small tasks.
+Contains Bash (and sed) scripts I've written to help with small tasks.
 
 ---
 
@@ -56,6 +56,23 @@ run the command in your home directory, ignoring `~/.emacs.d` and `~/tmp`.
 
 `gitstat -l -i tmp/`  
 run the command to just list git directories, ignoring any directories under `./tmp/`
+
+---
+
+### ncs
+`ncs` is a sed script that converts line-breaks ('\n') into commas. It can be used to convert file of line-break'd entries into a comma-separated line.  
+
+--- example  
+```sh
+ $ cat fruits
+banana
+strawberry
+cherry
+blueberry
+
+$ ncs fruits 
+banana,strawberry,cherry,blueberry
+```
 
 ---
 
