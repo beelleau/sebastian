@@ -194,7 +194,7 @@ get_ip_special() {
   elif (( o_a[0] >= 224 && o_a[0] <= 239 )); then
     t="multicast"
   elif (( o_a[0] >= 240 && o_a[0] <= 255 )); then
-    t="resvered"
+    t="reserved"
   fi
 
   # return
