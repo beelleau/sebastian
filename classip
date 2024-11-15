@@ -35,9 +35,9 @@ parse_options() {
   while getopts ":hcrs" opt; do
     case "$opt" in
       h) show_help; exit 0 ;;
-      c) c="c" ;;
-      r) r="r" ;;
-      s) s="s" ;;
+      c) class="c" ;;
+      r) private="r" ;;
+      s) special="s" ;;
       \?)
         err "Invalid option: -$OPTARG"
         show_help
@@ -112,11 +112,11 @@ validate_ip_address() {
 
   [[ "$1" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || return 1
 
-  local -a o_a
-  local i
-  IFS='.' read -r -a o_a <<< "$1"
-  for i in "${o_a[@]}"; do
-    ((i < 0 || i > 255)) && return 1
+  local -a octet_arr
+  local ipaddr
+  IFS='.' read -r -a octet_arr <<< "$1"
+  for ipaddr in "${octet_arr[@]}"; do
+    ((ipaddr < 0 || ipaddr > 255)) && return 1
   done
 
   # return
@@ -129,23 +129,23 @@ get_ip_class() {
   # ARG $1: ip address
   # RET: ip class
 
-  local i c
-  i="${1%%.*}"
+  local ipaddr class
+  ipaddr="${1%%.*}"
 
-  if (( i >= 0 && i <= 127 )); then
-    c="A"
-  elif (( i >= 128 && i <= 191 )); then
-    c="B"
-  elif (( i >= 192 && i <= 223 )); then
-    c="C"
-  elif (( i >= 224 && i <= 239 )); then
-    c="D"
-  elif (( i >= 240 && i <= 255 )); then
-    c="E"
+  if (( ipaddr >= 0 && ipaddr <= 127 )); then
+    class="A"
+  elif (( ipaddr >= 128 && ipaddr <= 191 )); then
+    class="B"
+  elif (( ipaddr >= 192 && ipaddr <= 223 )); then
+    class="C"
+  elif (( ipaddr >= 224 && ipaddr <= 239 )); then
+    class="D"
+  elif (( ipaddr >= 240 && ipaddr <= 255 )); then
+    class="E"
   fi
 
   # return
-  echo -n "$c"
+  echo -n "$class"
 }
 
 get_ip_pripub() {
@@ -154,26 +154,26 @@ get_ip_pripub() {
   # ARG $1: ip address
   # RET: private or public
 
-  local -a o_a
-  local t
-  IFS=. read -r -a o_a <<< "$1"
+  local -a octet_arr
+  local ip_type
+  IFS=. read -r -a octet_arr <<< "$1"
 
-  if (( o_a[0] == 10 )); then
-    t="private"
-  elif (( o_a[0] == 169 && o_a[1] == 254 )); then
-    t="private"
-  elif (( o_a[0] == 172 && o_a[1] >= 16 && o_a[1] <= 31 )); then
-    t="private"
-  elif (( o_a[0] == 192 && o_a[1] == 168 )); then
-    t="private"
-  elif (( o_a[0] >= 224 && o_a[0] <= 255 )); then
-    t="private"
+  if (( octet_arr[0] == 10 )); then
+    ip_type="private"
+  elif (( octet_arr[0] == 169 && octet_arr[1] == 254 )); then
+    ip_type="private"
+  elif (( octet_arr[0] == 172 && octet_arr[1] >= 16 && octet_arr[1] <= 31 )); then
+    ip_type="private"
+  elif (( octet_arr[0] == 192 && octet_arr[1] == 168 )); then
+    ip_type="private"
+  elif (( octet_arr[0] >= 224 && octet_arr[0] <= 255 )); then
+    ip_type="private"
   else
-    t="public"
+    ip_type="public"
   fi
 
   # return
-  echo -n "$t"
+  echo -n "$ip_type"
 }
 
 get_ip_special() {
@@ -183,22 +183,22 @@ get_ip_special() {
   # ARG $1: ip address
   # RET: special ip type, or nothing
 
-  local -a o_a
-  local t
-  IFS=. read -r -a o_a <<< "$1"
+  local -a octet_arr
+  local special_type
+  IFS=. read -r -a octet_arr <<< "$1"
 
-  if (( o_a[0] == 127 )); then
-    t="loopback"
-  elif (( o_a[0] == 169 && o_a[1] == 254 )); then
-    t="link-local"
-  elif (( o_a[0] >= 224 && o_a[0] <= 239 )); then
-    t="multicast"
-  elif (( o_a[0] >= 240 && o_a[0] <= 255 )); then
-    t="reserved"
+  if (( octet_arr[0] == 127 )); then
+    special_type="loopback"
+  elif (( octet_arr[0] == 169 && octet_arr[1] == 254 )); then
+    special_type="link-local"
+  elif (( octet_arr[0] >= 224 && octet_arr[0] <= 239 )); then
+    special_type="multicast"
+  elif (( octet_arr[0] >= 240 && octet_arr[0] <= 255 )); then
+    special_type="reserved"
   fi
 
   # return
-  echo -n "$t"
+  echo -n "$special_type"
 }
 
 main() {
@@ -209,22 +209,22 @@ main() {
     show_help
     exit 1
   fi
-  local c r s
+  local class private special
   parse_options "$@"
   shift $((OPTIND - 1)) # shift $@ past optional flags
-  option_printer "${c}${r}${s}"
+  option_printer "${class}${private}${special}"
 
-  local i ip_class ip_pripub ip_special
-  for i in "$@"; do
-    if ! validate_ip_address "$i"; then
+  local _ip ip_class ip_pripub ip_special
+  for _ip in "$@"; do
+    if ! validate_ip_address "$_ip"; then
       err "\"${1}\" : Invalid IP address"
       continue
     fi
-    ip_class=$(get_ip_class "$i")
-    ip_pripub=$(get_ip_pripub "$i")
-    ip_special=$(get_ip_special "$i")
+    ip_class=$(get_ip_class "$_ip")
+    ip_pripub=$(get_ip_pripub "$_ip")
+    ip_special=$(get_ip_special "$_ip")
 
-    echo "${i} : ${ip_class} ${ip_pripub} ${ip_special}"
+    echo "${_ip} : ${ip_class} ${ip_pripub} ${ip_special}"
   done
 }
 

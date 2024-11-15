@@ -6,8 +6,8 @@
 trap 'echo -e "\nSIGINT Received... exiting"; exit 130' SIGINT
 
 # global variables
-declare magenta="\033[0;35m"
-declare reset="\033[0m"
+declare MAGENTA="\033[0;35m"
+declare RESET="\033[0m"
 
 err() {
   # send errors to standard error
@@ -42,18 +42,17 @@ parse_options() {
         if ! [[ -d "${top_dir}" ]]; then
           err "Directory not found: ${top_dir}"
           echo
-          show_help
           exit 1
         fi
         ;;
       i)
         # strip trailing '/' from the argument if present
-        local s
-        s="${OPTARG%/}"
-        if ! [[ "${s}" =~ ^(/|\.\.?/) ]]; then
-          s="./${s}"
+        local str_strip
+        str_strip="${OPTARG%/}"
+        if ! [[ "${str_strip}" =~ ^(/|\.\.?/) ]]; then
+          str_strip="./${str_strip}"
         fi
-        excluded_dirs+=("${s}")
+        excluded_dirs+=("${str_strip}")
         ;;
       l) opt_list="1" ;;
       \?)
@@ -65,19 +64,19 @@ parse_options() {
   done
 }
 
-fetch_git_repos() {
+gather_git_repos() {
   # find all .git repositories under $1 path and place them into an array
   #
   # ARG $1: top-level directory
   # RET: git repositories
 
-  local -a d_a
-  readarray -t d_a < \
+  local -a dir_arr
+  readarray -t dir_arr < \
             <(find "$1" -type d -name ".git" -exec dirname {} \; 2>/dev/null \
                 | sort)
 
   # return
-  echo -n "${d_a[@]}"
+  echo -n "${dir_arr[@]}"
 }
 
 validate_excluded_dirs() {
@@ -86,31 +85,31 @@ validate_excluded_dirs() {
   # ARG $@: array of user specified excluded directories
   # RET: array of validated directories to exclude
 
-  local -a d_a
-  local d
-  for d in "$@"; do
-    if [[ -d "$d" ]]; then
-      d_a+=("$d")
-    elif ! [[ -d "$d" ]]; then
-      err "Directory not found: $d ..."
+  local -a valid_dir_arr
+  local dir
+  for dir in "$@"; do
+    if [[ -d "$dir" ]]; then
+      valid_dir_arr+=("$dir")
+    elif ! [[ -d "$dir" ]]; then
+      err "Directory not found: $dir ..."
     fi
   done
 
   # return
-  echo -n "${d_a[@]}"
+  echo -n "${valid_dir_arr[@]}"
 }
 
 _remove_validated_excluded_dirs() {
   # removes directories named in $@ from $git_repos[]
   #
-  # REQ: $checked_excluded_dirs[]
+  # REQ: $valid_excluded_dirs[]
   # REQ: $git_repos[]
 
-  local d
+  local dir
   # Iterate over git_repos
-  for d in "${valid_excluded_dirs[@]}"; do
+  for dir in "${valid_excluded_dirs[@]}"; do
     # shellcheck disable=SC2206
-    git_repos=(${git_repos[@]/${d}*})
+    git_repos=(${git_repos[@]/${dir}*})
   done
 }
 
@@ -119,9 +118,9 @@ print_array() {
   #
   # ARG $1: array
 
-  local e
-  for e in "$@"; do
-    echo "$e"
+  local i
+  for i in "$@"; do
+    echo "$i"
   done
 }
 
@@ -130,14 +129,14 @@ gitstat_run() {
   #
   # ARG $1: array of git repo directories
 
-  local d
-  for d in "$@"; do
+  local repo
+  for repo in "$@"; do
     printf -- "--- "
-    printf "${magenta}%s${reset}\n" "${d%%\/.git}"
-    cd "${d}" || exit 1
+    printf "${MAGENTA}%s${RESET}\n" "${repo%%\/.git}"
+    cd "${repo}" || exit 1
     git status
     printf -- "---\n\n"
-    cd - >/dev/null 2>&1 || exit 1
+    cd - &>/dev/null || exit 1
   done
 }
 
@@ -154,7 +153,7 @@ main() {
   fi
 
   # fetch the git repositories and assign to git_repos
-  read -r -a git_repos < <(fetch_git_repos "$top_dir")
+  read -r -a git_repos < <(gather_git_repos "$top_dir")
 
   # validate excluded_dirs array, removing invalid arguments
   read -r -a valid_excluded_dirs < \
