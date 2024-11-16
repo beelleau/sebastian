@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # gitstat :: find git repos and print git status
-# requires: bash 4.0+, git, find, sort
+# requires: bash 4.0+, git, find, sort, dirname
 
 trap 'echo -e "\nSIGINT Received... exiting"; exit 130' SIGINT
 

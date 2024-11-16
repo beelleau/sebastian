@@ -73,7 +73,7 @@ parse_options() {
   done
 }
 
-hostfile2array() {
+hostfile_to_array() {
   # convert each line in a file to an array element
   # skip lines that start with # or [, skip blank lines
   # trim leading and trailing whitespace
@@ -94,14 +94,14 @@ _oneshot_run_zero() {
   # REQ: $cmd_array[]
   # REQ: $username
 
-  local h cmd_output
-  for h in "${host_array[@]}"; do
+  local host cmd_output
+  for host in "${host_array[@]}"; do
     if cmd_output=$(ssh -nq -o StrictHostKeyChecking=accept-new \
                         -o PasswordAuthentication=no -o ConnectTimeout=10 \
-                        "${username}"@"${h}" "${cmd_array[@]}"); then
+                        "${username}"@"${host}" "${cmd_array[@]}"); then
       echo "${cmd_output}"
     else
-      err "Connection to ${h} failed"
+      err "Connection to ${host} failed"
     fi
   done
 }
@@ -113,15 +113,15 @@ _oneshot_run_one() {
   # REQ: $cmd_array[]
   # REQ: $username
 
-  local h cmd_output
-  for h in "${host_array[@]}"; do
-    echo "${h}:"
+  local host cmd_output
+  for host in "${host_array[@]}"; do
+    echo "${host}:"
     if cmd_output=$(ssh -nq -o StrictHostKeyChecking=accept-new \
                         -o PasswordAuthentication=no -o ConnectTimeout=10 \
-                        "${username}"@"${h}" "${cmd_array[@]}"); then
+                        "${username}"@"${host}" "${cmd_array[@]}"); then
       echo "${cmd_output}"
     else
-      err "Connection to ${h} failed"
+      err "Connection to ${host} failed"
     fi
     echo ""
   done
@@ -134,16 +134,16 @@ _oneshot_run_two() {
   # REQ: $cmd_array[]
   # REQ: $username
 
-  local h cmd_output
+  local host cmd_output
   echo "hostname,output"
-  for h in "${host_array[@]}"; do
-    echo -n "${h},"
+  for host in "${host_array[@]}"; do
+    echo -n "${host},"
     if cmd_output=$(ssh -nq -o StrictHostKeyChecking=accept-new \
                         -o PasswordAuthentication=no -o ConnectTimeout=10 \
-                        "${username}"@"${h}" "${cmd_array[@]}"); then
+                        "${username}"@"${host}" "${cmd_array[@]}"); then
       echo "${cmd_output}"
     else
-      err "Connection failed"
+      echo "Connection failed"
     fi
   done
 }
@@ -191,9 +191,9 @@ main() {
     exit 3
   fi
 
-  # place the hostfile into an array, parsing using hostfile2array function
+  # place the hostfile into an array, parsing using hostfile_to_array function
   local -a host_array cmd_array
-  hostfile2array "host_array" "$1"
+  hostfile_to_array "host_array" "$1"
   # assemble the commands to pass into ssh, add "or true" to handle ssh errors
   [[ "$format_style" -ne 3 ]] && cmd_array=("${@:2}" "2>&1" "||" "true")
   # if "test" argument is used, use below $cmd_array[] values
