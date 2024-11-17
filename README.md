@@ -1,4 +1,4 @@
-# My Bash scripts
+# sebastian
 Contains Bash (and sed) scripts I've written to help with small tasks.
 
 ---
@@ -111,3 +111,35 @@ ssh to each host in "/tmp/hostlist" as the user "larry" and run the command `gre
 
 `oneshot -t ../hostlist`  
 run the ssh "test" against `../hostlist`. You will automatically add new hosts' public keys to your `~/.ssh/known_hosts` file, and you will get a warning if a key has changed. Use this option to verify connectivity and/or conduct ssh related troubleshooting.
+
+---
+
+### sizable
+`sizable` prints largest files and/or directories under a given directories, relying on `find`.  
+
+By default, `sizable` will print the 10 largest files under the given directory. An option is available to increase the number of items printed.  
+
+--- usage  
+```
+Usage: sizable [-d] [-f] [-n <number>] [<directory>]
+Options:
+  -h, --help    Show this help menu
+  -d            Show directories
+  -f            Show files (DEFAULT=True)
+                - (Only needed when using '-d' to print files and dirs)
+  -n <int>      Number of lines to show (DEFAULT=10)
+```
+
+--- examples  
+
+`sizable`  
+show the 10 largest files in your current directory.  
+
+`sizable aaa/`  
+show the 10 largest files in the `aaa/` directory.  
+
+`sizable -n 15 bbb/ ccc/`
+show the 15 larges files in the `bbb/` directory, then show the 15 largest files in the `ccc/` directory.  
+
+`sizable -d 6 eee/`  
+show the 6 largest directorys in the `eee/` directory.  
