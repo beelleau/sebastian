@@ -7,7 +7,12 @@ trap 'echo -e "\nSIGINT Received... exiting"; exit 130' SIGINT
 
 err() {
   # send errors to standard error
-  echo "$*" >&2
+  echo "[${0##*/}] error: $*" >&2
+}
+
+warn() {
+  # send warnings to standard error
+  echo "[${0##*/}] warning: $*" >&2
 }
 
 show_help() {
@@ -60,7 +65,7 @@ validate_directories() {
     if [[ -d "$dir" ]]; then
       valid_dirs+=("$dir")
     else
-      err "Invalid directory: $dir"
+      warn "Invalid directory: $dir"
       echo ""
     fi
   done

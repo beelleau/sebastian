@@ -7,7 +7,7 @@ trap 'echo -e "\nSIGINT Received... exiting"; exit 130' SIGINT
 
 err() {
   # send errors to standard error
-  echo "$*" >&2
+  echo "[${0##*/}] error: $*" >&2
 }
 
 show_help() {
@@ -30,7 +30,7 @@ parse_options() {
     exit 0
   fi
 
-  # c r s must be already delcared in parent function
+  # $class $private $special must be already delcared in parent function
   local opt
   while getopts ":hcrs" opt; do
     case "$opt" in

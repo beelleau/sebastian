@@ -7,7 +7,12 @@ trap 'echo -e "\nSIGINT Received... exiting"; exit 130' SIGINT
 
 err() {
   # send errors standard error
-  echo "$*" >&2
+  echo "[${0##*/}] error: $*" >&2
+}
+
+warn() {
+  # send warnings to standard error
+  echo "[${0##*/}] warning: $*" >&2
 }
 
 show_help() {
@@ -121,7 +126,7 @@ _oneshot_run_one() {
                         "${username}"@"${host}" "${cmd_array[@]}"); then
       echo "${cmd_output}"
     else
-      err "Connection to ${host} failed"
+      echo "Connection to ${host} failed"
     fi
     echo ""
   done
@@ -159,7 +164,7 @@ _oneshot_run_test() {
     if ! cmd_output=$(ssh -n -o StrictHostKeyChecking=accept-new \
                           -o PasswordAuthentication=no -o ConnectTimeout=10 \
                           "${username}"@"${h}" "true" 2>&1); then
-      err "${h} failed with error -> ${cmd_output}"
+      echo "${h} failed with error -> ${cmd_output}"
       echo ""
     fi
   done
@@ -182,7 +187,7 @@ main() {
     exit 1
   fi
   if [[ $# -eq 2 ]] && [[ "$format_style" -eq 3 ]]; then
-    err "-t option used, command entered is ignored"
+    warn "-t option used, command entered is ignored"
   fi
 
   # check for $1, the hostfile, valid path
