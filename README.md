@@ -1,5 +1,5 @@
 # sebastian
-Contains Bash (and sed) scripts I've written to help with small tasks.
+Bash (and sed) scripts I've written to help with small tasks.
 
 ---
 
@@ -24,7 +24,7 @@ print all classful IP ranges.
 print all classful private IP ranges, and describe the IP address 192.168.86.4.  
   
 `classip -rcs 10.10.10.3 1.2.3.4 169.254.0.24`  
-print all classful information, and describe all IP address entered as arguments.
+print all information, and describe all IP address entered as arguments.
 
 ---
 
@@ -59,27 +59,10 @@ run the command to just list git directories, ignoring any directories under `./
 
 ---
 
-### ncs
-`ncs` is a sed script that converts line-breaks ('\n') into commas. It can be used to convert file of line-break'd entries into a comma-separated line.  
-
---- example  
-```sh
- $ cat fruits
-banana
-strawberry
-cherry
-blueberry
-
-$ ncs fruits 
-banana,strawberry,cherry,blueberry
-```
-
----
-
 ### oneshot
 `oneshot` allows you to run a command against a list of remote hosts.  
 
-! Exercise caution when using this script. In general, it should only be used to gather basic information from a list of remote servers.  
+**!** Exercise caution when using this script. In general, it should only be used to gather basic information from a list of remote servers.  
 
 A "hostlist" is required to use `oneshot`. It must be line-break separated. It will read every line that is not blank, and does not start with a `#` or `[`.  
 
@@ -111,6 +94,49 @@ ssh to each host in "/tmp/hostlist" as the user "larry" and run the command `gre
 
 `oneshot -t ../hostlist`  
 run the ssh "test" against `../hostlist`. You will automatically add new hosts' public keys to your `~/.ssh/known_hosts` file, and you will get a warning if a key has changed. Use this option to verify connectivity and/or conduct ssh related troubleshooting.
+
+---
+
+### s-n2c
+`s-n2c` is a sed script that converts line-breaks ('\n') into commas. It can be used to convert a file of entries separated by line-breaks into a comma-separated line.  
+
+--- example  
+```
+ $ cat fruits
+banana
+strawberry
+cherry
+blueberry
+
+ $ s-n2c fruits 
+banana,strawberry,cherry,blueberry
+```
+
+---
+
+### s-noco
+`s-noco` is a sed scrip that prints text without comments (`#` and `;`) and blank lines. It could be helpful to quickly view the variables of large Unix configuration files that contain many comments, like `squid.conf` or `sshd.conf`.  
+
+--- example  
+```
+ $ cat fruits 
+# Donkey Kong's favorite fruit
+banana
+
+# mind the empty line above
+strawberry
+  # s-noco is aware of possible leading whitespace
+  cherry
+
+; a comment made with a semi-colon... named!
+blueberry
+
+ $ s-noco fruits
+banana
+strawberry
+  cherry
+blueberry
+```
 
 ---
 

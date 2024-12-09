@@ -1,0 +1,6 @@
+#!/usr/bin/env -S sed -n -f
+# prints text without comments or blank lines
+# (where comments start with # or ;)
+/^[[:space:]]*[#;]/d
+/^$/d
+p
