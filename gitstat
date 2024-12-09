@@ -49,9 +49,7 @@ parse_options() {
         # strip trailing '/' from the argument if present
         local str_strip
         str_strip="${OPTARG%/}"
-        if ! [[ "${str_strip}" =~ ^(/|\.\.?/) ]]; then
-          str_strip="./${str_strip}"
-        fi
+        ! [[ "${str_strip}" =~ ^(/|\.\.?/) ]] && str_strip="./${str_strip}"
         excluded_dirs+=("${str_strip}")
         ;;
       l) opt_list="1" ;;
