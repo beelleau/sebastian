@@ -129,23 +129,20 @@ get_ip_class() {
   # ARG $1: ip address
   # RET: ip class
 
-  local ipaddr class
+  local ipaddr
   ipaddr="${1%%.*}"
 
   if (( ipaddr >= 0 && ipaddr <= 127 )); then
-    class="A"
+    echo -n "A"
   elif (( ipaddr >= 128 && ipaddr <= 191 )); then
-    class="B"
+    echo -n "B"
   elif (( ipaddr >= 192 && ipaddr <= 223 )); then
-    class="C"
+    echo -n "C"
   elif (( ipaddr >= 224 && ipaddr <= 239 )); then
-    class="D"
+    echo -n "D"
   elif (( ipaddr >= 240 && ipaddr <= 255 )); then
-    class="E"
+    echo -n "E"
   fi
-
-  # return
-  echo -n "$class"
 }
 
 get_ip_pripub() {
@@ -155,25 +152,21 @@ get_ip_pripub() {
   # RET: private or public
 
   local -a octet_arr
-  local ip_type
   IFS=. read -r -a octet_arr <<< "$1"
 
   if (( octet_arr[0] == 10 )); then
-    ip_type="private"
+    echo -n "private"
   elif (( octet_arr[0] == 169 && octet_arr[1] == 254 )); then
-    ip_type="private"
+    echo -n "private"
   elif (( octet_arr[0] == 172 && octet_arr[1] >= 16 && octet_arr[1] <= 31 )); then
-    ip_type="private"
+    echo -n "private"
   elif (( octet_arr[0] == 192 && octet_arr[1] == 168 )); then
-    ip_type="private"
+    echo -n "private"
   elif (( octet_arr[0] >= 224 && octet_arr[0] <= 255 )); then
-    ip_type="private"
+    echo -n "private"
   else
-    ip_type="public"
+    echo -n "public"
   fi
-
-  # return
-  echo -n "$ip_type"
 }
 
 get_ip_special() {
@@ -184,21 +177,17 @@ get_ip_special() {
   # RET: special ip type, or nothing
 
   local -a octet_arr
-  local special_type
   IFS=. read -r -a octet_arr <<< "$1"
 
   if (( octet_arr[0] == 127 )); then
-    special_type="loopback"
+    echo -n "loopback"
   elif (( octet_arr[0] == 169 && octet_arr[1] == 254 )); then
-    special_type="link-local"
+    echo -n "link-local"
   elif (( octet_arr[0] >= 224 && octet_arr[0] <= 239 )); then
-    special_type="multicast"
+    echo -n "multicast"
   elif (( octet_arr[0] >= 240 && octet_arr[0] <= 255 )); then
-    special_type="reserved"
+    echo -n "reserved"
   fi
-
-  # return
-  echo -n "$special_type"
 }
 
 main() {

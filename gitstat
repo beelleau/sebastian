@@ -66,35 +66,23 @@ gather_git_repos() {
   # find all .git repositories under $1 path and place them into an array
   #
   # ARG $1: top-level directory
-  # RET: git repositories
 
-  local -a dir_arr
-  readarray -t dir_arr < \
-            <(find "$1" -type d -name ".git" -exec dirname {} \; 2>/dev/null \
-                | sort)
-
-  # return
-  echo -n "${dir_arr[@]}"
+  find "$1" -type d -name ".git" -exec dirname {} \; 2>/dev/null | sort
 }
 
 validate_excluded_dirs() {
   # check excluded directories and remove if non-valid
   #
   # ARG $@: array of user specified excluded directories
-  # RET: array of validated directories to exclude
 
-  local -a valid_dir_arr
   local dir
   for dir in "$@"; do
     if [[ -d "$dir" ]]; then
-      valid_dir_arr+=("$dir")
+      echo "$dir"
     elif ! [[ -d "$dir" ]]; then
       err "Directory not found: $dir ..."
     fi
   done
-
-  # return
-  echo -n "${valid_dir_arr[@]}"
 }
 
 _remove_validated_excluded_dirs() {
@@ -151,11 +139,11 @@ main() {
   fi
 
   # fetch the git repositories and assign to git_repos
-  read -r -a git_repos < <(gather_git_repos "$top_dir")
+  readarray -t git_repos < <(gather_git_repos "$top_dir")
 
   # validate excluded_dirs array, removing invalid arguments
-  read -r -a valid_excluded_dirs < \
-       <(validate_excluded_dirs "${excluded_dirs[@]}")
+  readarray -t valid_excluded_dirs < \
+            <(validate_excluded_dirs "${excluded_dirs[@]}")
 
   # remove excluded directories from git_repos
   # git_repos - checked_excluded_dirs = git_repos

@@ -59,19 +59,15 @@ validate_directories() {
   # ARG $@: all directories in @
   # RET: array of valid directories
 
-  local -a valid_dirs
-
+  local dir
   for dir in "$@"; do
     if [[ -d "$dir" ]]; then
-      valid_dirs+=("$dir")
+      echo "$dir"
     else
       warn "Invalid directory: $dir"
       echo ""
     fi
   done
-
-  # return
-  echo -n "${valid_dirs[@]}"
 }
 
 run_sizable_files() {
