@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # gitstat :: find git repos and print git status
-# requires: bash 4.0+, git, find, sort, dirname
+# requires: bash 4.0+, git, find, sort, dirname, xargs
 
 trap 'echo -e "\nSIGINT Received... exiting"; exit 130' SIGINT
 
@@ -67,7 +67,9 @@ gather_git_repos() {
   #
   # ARG $1: top-level directory
 
-  find "$1" -type d -name ".git" -exec dirname {} \; 2>/dev/null | sort
+  find "$1" -type d -name ".git" -print0 2>/dev/null \
+    | xargs -0 dirname \
+    | sort
 }
 
 validate_excluded_dirs() {
