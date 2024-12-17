@@ -152,7 +152,7 @@ get_ip_pripub() {
   # RET: private or public
 
   local -a octet_arr
-  IFS=. read -r -a octet_arr <<< "$1"
+  IFS='.' read -r -a octet_arr <<< "$1"
 
   if (( octet_arr[0] == 10 )); then
     echo -n "private"
@@ -177,7 +177,7 @@ get_ip_special() {
   # RET: special ip type, or nothing
 
   local -a octet_arr
-  IFS=. read -r -a octet_arr <<< "$1"
+  IFS='.' read -r -a octet_arr <<< "$1"
 
   if (( octet_arr[0] == 127 )); then
     echo -n "loopback"
