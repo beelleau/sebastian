@@ -21,7 +21,7 @@ show_help() {
   echo "Options:"
   echo "  -h, --help    Show this help menu"
   echo "  -a            Show output in 'view' format, with line-breaks"
-  echo "  -c            Show output in CSV format {hostname},{output}"
+  echo "  -c            Show output in CSV format \$hostname,\$output"
   echo "  -t            Conduct a ssh connection test against <hostfile>"
   echo "  -u <user>     Specify SSH username"
 }
@@ -103,10 +103,10 @@ _oneshot_run_zero() {
   for host in "${host_array[@]}"; do
     if cmd_output=$(ssh -nq -o StrictHostKeyChecking=accept-new \
                         -o PasswordAuthentication=no -o ConnectTimeout=10 \
-                        "${username}"@"${host}" "${cmd_array[@]}"); then
-      echo "${cmd_output}"
+                        "$username"@"$host" "${cmd_array[@]}"); then
+      echo "$cmd_output"
     else
-      err "Connection to ${host} failed"
+      err "Connection to $host failed"
     fi
   done
 }
@@ -123,10 +123,10 @@ _oneshot_run_one() {
     echo "${host}:"
     if cmd_output=$(ssh -nq -o StrictHostKeyChecking=accept-new \
                         -o PasswordAuthentication=no -o ConnectTimeout=10 \
-                        "${username}"@"${host}" "${cmd_array[@]}"); then
-      echo "${cmd_output}"
+                        "$username"@"$host" "${cmd_array[@]}"); then
+      echo "$cmd_output"
     else
-      echo "Connection to ${host} failed"
+      echo "Connection to $host failed"
     fi
     echo ""
   done
@@ -145,8 +145,8 @@ _oneshot_run_two() {
     echo -n "${host},"
     if cmd_output=$(ssh -nq -o StrictHostKeyChecking=accept-new \
                         -o PasswordAuthentication=no -o ConnectTimeout=10 \
-                        "${username}"@"${host}" "${cmd_array[@]}"); then
-      echo "${cmd_output}"
+                        "$username"@"$host" "${cmd_array[@]}"); then
+      echo "$cmd_output"
     else
       echo "Connection failed"
     fi
@@ -159,12 +159,12 @@ _oneshot_run_test() {
   # REQ: $host_array[]
   # REQ: $username
 
-  local h cmd_output
-  for h in "${host_array[@]}"; do
+  local host cmd_output
+  for host in "${host_array[@]}"; do
     if ! cmd_output=$(ssh -n -o StrictHostKeyChecking=accept-new \
                           -o PasswordAuthentication=no -o ConnectTimeout=10 \
-                          "${username}"@"${h}" "true" 2>&1); then
-      echo "${h} failed with error -> ${cmd_output}"
+                          "$username"@"$host" "true" 2>&1); then
+      echo "$host failed with error -> $cmd_output"
       echo ""
     fi
   done
@@ -174,7 +174,7 @@ main() {
   # parse options and arguments; assign values
   local format_style username
   format_style="0"
-  username="${USER}"
+  username="$USER"
   parse_options "$@"
   shift $((OPTIND - 1)) # shift $@ past optional flags
 
@@ -210,7 +210,7 @@ main() {
     0) _oneshot_run_zero ;;
     # -a, hostname and then a line break, extra blank line at end
     1) _oneshot_run_one ;;
-    # -c, csv format: {hostname},{stdout}
+    # -c, csv format: $hostname,$stdout
     2) _oneshot_run_two ;;
     # -t, test connections
     3) _oneshot_run_test ;;

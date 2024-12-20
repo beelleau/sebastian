@@ -130,7 +130,7 @@ get_ip_class() {
   # RET: ip class
 
   local ipaddr
-  ipaddr="${1%%.*}"
+  ipaddr="${1%%\.*}"
 
   if (( ipaddr >= 0 && ipaddr <= 127 )); then
     echo -n "A"
@@ -213,7 +213,7 @@ main() {
     ip_pripub=$(get_ip_pripub "$_ip")
     ip_special=$(get_ip_special "$_ip")
 
-    echo "${_ip} : ${ip_class} ${ip_pripub} ${ip_special}"
+    echo "$_ip : $ip_class $ip_pripub $ip_special"
   done
 }
 

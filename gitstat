@@ -39,7 +39,7 @@ parse_options() {
       h) show_help; exit 0 ;;
       d)
         top_dir="$OPTARG"
-        if ! [[ -d "${top_dir}" ]]; then
+        if ! [[ -d "$top_dir" ]]; then
           err "Directory not found: ${top_dir}"
           echo
           exit 1
@@ -49,8 +49,8 @@ parse_options() {
         # strip trailing '/' from the argument if present
         local str_strip
         str_strip="${OPTARG%/}"
-        ! [[ "${str_strip}" =~ ^(/|\.\.?/) ]] && str_strip="./${str_strip}"
-        excluded_dirs+=("${str_strip}")
+        ! [[ "$str_strip" =~ ^(/|\.\.?/) ]] && str_strip="./$str_strip"
+        excluded_dirs+=("$str_strip")
         ;;
       l) opt_list="1" ;;
       \?)
@@ -71,7 +71,7 @@ gather_git_repos() {
   readarray -t git_dirs < <(find "$1" -type d -name ".git" 2>/dev/null | sort)
 
   for _dir in "${git_dirs[@]}"; do
-    echo "${_dir%/.git}"
+    echo "${_dir%/\.git}"
   done
 }
 
@@ -124,7 +124,7 @@ gitstat_run() {
   for repo in "$@"; do
     echo -n "-- "
     echo -e "${MAGENTA}$repo${RESET}"
-    cd "${repo}" || exit 1
+    cd "$repo" || exit 1
     git status
     echo -e "\n"
     cd - &>/dev/null || exit 1
