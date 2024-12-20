@@ -69,6 +69,10 @@ parse_options() {
         format_style="3"
         ;;
       u) username="$OPTARG" ;;
+      :)
+        err "option -$OPTARG requires an argument"
+        exit 1
+        ;;
       \?)
         err "Invalid option: -$OPTARG"
         show_help

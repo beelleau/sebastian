@@ -44,6 +44,10 @@ parse_options() {
       d) show_dirs="1" ;;
       f) show_files="1" ;;
       n) headcount="$OPTARG"; shift ;;
+      :)
+        err "option -$OPTARG requires an argument"
+        exit 1
+        ;;
       \?)
         err "Invalid option: -$OPTARG"
         show_help

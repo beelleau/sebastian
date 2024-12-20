@@ -53,6 +53,10 @@ parse_options() {
         excluded_dirs+=("$str_strip")
         ;;
       l) opt_list="1" ;;
+      :)
+        err "option -$OPTARG requires an argument"
+        exit 1
+        ;;
       \?)
         err "Invalid option: -$OPTARG"
         show_help
