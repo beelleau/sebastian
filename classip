@@ -10,6 +10,11 @@ err() {
   echo "[${0##*/}] error: $*" >&2
 }
 
+warn() {
+  # send warnings to standard error
+  echo "[${0##*/}] warning: $*" >&2
+}
+
 show_help() {
   # help option text
   echo "Usage: ${0##*/} [-c -r -s] [<ip address>] ..."
@@ -21,27 +26,32 @@ show_help() {
   echo ""
 }
 
-parse_options() {
+_parse_options() {
   # parse arguments and assign variables, arrays
 
   # check for long "--help"
   if [[ "$1" == "--help" ]]; then
     show_help
-    exit 0
+    showed_help="1"
+    return 0
   fi
 
   # $class $private $special must be already delcared in parent function
   local opt
   while getopts ":hcrs" opt; do
     case "$opt" in
-      h) show_help; exit 0 ;;
+      h)
+        show_help
+        showed_help="1"
+        return 0
+        ;;
       c) class="c" ;;
       r) private="r" ;;
       s) special="s" ;;
       \?)
         err "Invalid option: -$OPTARG"
         show_help
-        exit 1
+        return 1
         ;;
     esac
   done
@@ -202,15 +212,19 @@ main() {
     show_help
     exit 1
   fi
-  local class private special
-  parse_options "$@"
+
+  # define variables that can be assigned in parse_options
+  local showed_help class private special
+  _parse_options "$@" || exit 1
+  [[ -n "$showed_help" ]] && exit 0
   shift $((OPTIND - 1)) # shift $@ past optional flags
+
   option_printer "${class}${private}${special}"
 
   local _ip ip_class ip_pripub ip_special
   for _ip in "$@"; do
     if ! validate_ip_address "$_ip"; then
-      err "\"${1}\" : Invalid IP address"
+      warn "invalid IP address ${_ip}"
       continue
     fi
     ip_class=$(get_ip_class "$_ip")
