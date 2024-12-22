@@ -26,13 +26,14 @@ show_help() {
   echo "  -n <int>      Number of lines to show (DEFAULT=10)"
 }
 
-parse_options() {
+_parse_options() {
   # parse arguments and assign variables
 
   # check for long "--help"
   if [[ "$1" == "--help" ]]; then
     show_help
-    exit 0
+    showed_help="1"
+    return 0
   fi
 
   # required: headcount, show_dirs, show_files variables
@@ -40,18 +41,32 @@ parse_options() {
   local opt
   while getopts ":hdfn:" opt; do
     case "$opt" in
-      h) show_help; exit 0 ;;
-      d) show_dirs="1" ;;
+      h)
+        show_help
+        showed_help="1"
+        return 0
+        ;;
+      d)
+        show_dirs="1"
+        show_files=
+        ;;
       f) show_files="1" ;;
-      n) headcount="$OPTARG"; shift ;;
+      n)
+        headcount="$OPTARG"
+        if ! [[ "$headcount" =~ ^[0-9]+$ ]]; then
+          err "-n argument must be a positive integer"
+          return 1
+        fi
+        shift
+        ;;
       :)
         err "option -$OPTARG requires an argument"
-        exit 1
+        return 1
         ;;
       \?)
         err "Invalid option: -$OPTARG"
         show_help
-        exit 1
+        return 1
         ;;
     esac
   done
@@ -69,7 +84,6 @@ validate_directories() {
       echo "$dir"
     else
       warn "Invalid directory: $dir"
-      echo ""
     fi
   done
 }
@@ -109,28 +123,19 @@ run_sizable_dirs() {
 }
 
 main () {
-  local headcount="10" show_dirs show_files
-  local -a valid_dirs
+  local showed_help headcount="10" show_dirs show_files="1"
   # set default variables for find command
-  parse_options "$@"
+  _parse_options "$@" || exit 1
+  [[ -n "$showed_help" ]] && exit 0
   shift $((OPTIND - 1)) # shift $@ past optional flags
-
-  # if neither -d or -f were used, set -f (show_files) as a default
-  [[ -z "$show_dirs" ]] && [[ -z "$show_files" ]] && show_files="1"
 
   # verify we have at least one argument after options, if not set it to pwd
   [[ $# -lt 1 ]] && set -- '.'
 
-  # ensure all directories in remaining $@ are valid
-  readarray -t valid_dirs < <(validate_directories "$@")
-
-  # runs the find command
-  if [[ "${#valid_dirs[@]}" -ge 1 ]]; then
-      for dir in "$@"; do
-        [[ -n "$show_files" ]] && run_sizable_files "$dir" "$headcount"
-        [[ -n "$show_dirs" ]] && run_sizable_dirs "$dir" $(( headcount + 1 ))
-      done
-  fi
+  for dir in $(validate_directories "$@"); do
+    [[ -n "$show_files" ]] && run_sizable_files "$dir" "$headcount"
+    [[ -n "$show_dirs" ]] && run_sizable_dirs "$dir" $(( headcount + 1 ))
+  done
 }
 
 main "$@"
