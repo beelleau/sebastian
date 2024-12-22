@@ -182,7 +182,7 @@ main() {
   # parse options and arguments; assign values
   local showed_help format_style="0" username="$USER"
   _parse_options "$@" || exit 1
-  [[ -n "$showed_help" ]] && exit 0
+  [[ "$showed_help" ]] && exit 0
   shift $((OPTIND - 1)) # shift $@ past optional flags
 
   # check for at least two arguments after options are shifted, unless

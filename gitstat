@@ -144,7 +144,7 @@ main() {
   local showed_help opt_list top_dir
   local -a excluded_dirs git_repos valid_excluded_dirs
   _parse_options "$@" || exit 1
-  [[ -n "$showed_help" ]] && exit 0
+  [[ "$showed_help" ]] && exit 0
 
   # check for existance of $top_dir;
   # if it wasn't set by an argument, set it to pwd

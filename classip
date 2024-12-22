@@ -216,7 +216,7 @@ main() {
   # define variables that can be assigned in parse_options
   local showed_help class private special
   _parse_options "$@" || exit 1
-  [[ -n "$showed_help" ]] && exit 0
+  [[ "$showed_help" ]] && exit 0
   shift $((OPTIND - 1)) # shift $@ past optional flags
 
   option_printer "${class}${private}${special}"
