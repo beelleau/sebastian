@@ -59,6 +59,35 @@ run the command to just list git directories, ignoring any directories under `./
 
 ---
 
+### notifbk
+
+`notifbk` is a companion script for [notif.el](https://github.com/beelleau/notif) that creates and manages backups of your notif directory. It can create a compressed archive and optionally rotate old `notif` backup archives. By default, it uses the default `notif-directory` value of `$HOME/notes`.  
+
+This script is very much written in a way that is specific to my use case; so, if you do use this script, you may need to edit it to change some variables such as `$notif_directory`, compression method, naming scheme, etc.  
+
+--- usage  
+```
+Usage: notifbk -d <directory> [-k <n>] [-r]
+Options:
+  -h, --help      Show this help menu
+  -d <directory>  The directory to save the backup to
+  -k <n>          When rotating old backups:
+                  - The <n> most recent backups to keep
+  -r              Rotate backups only (will not create a backup)
+```
+
+--- examples  
+`notifbk -d ~/Backups`  
+create a backup of notif directory and place the archive in `~/Backups`  
+
+`notifbk -d /mnt/backup_drive/notes -k 5`  
+create a backup of notif directory, place the archive in `/mnt/backup_drive/notes`, and rotate notif backups by keeping only the 5 most recent backups  
+
+`notifbk -d /backups -k 10 -r`  
+do not create a new backup, but rotate the notif backups in `/backups`, keeping the 10 most recent backups  
+
+---
+
 ### oneshot
 `oneshot` allows you to run a command against a list of remote hosts.  
 
