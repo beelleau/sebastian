@@ -17,42 +17,49 @@ warn() {
 
 show_help() {
   # help option text
-  echo "Usage: ${0##*/} [-a|-c|-t] [-u <username>] <hostfile> \"<command>\""
+  echo "Usage: ${0##*/} [OPTION]... FILE \"COMMAND\""
   echo "Options:"
   echo "  -h, --help    Show this help menu"
   echo "  -a            Show output in 'view' format, with line-breaks"
-  echo "  -c            Show output in CSV format \$hostname,\$output"
-  echo "  -t            Conduct a ssh connection test against <hostfile>"
-  echo "  -u <user>     Specify SSH username"
+  echo "  -c            Show output in CSV format HOSTNAME,OUTPUT"
+  echo "  -t FILE       Conduct a ssh connection test against <hostfile>"
+  echo "  -u USER       Specify SSH username"
 }
 
 _parse_options_prevent_me() {
   # called in parse_options()
   # prevents mutually exclusive options from being requested in the same command
   #
-  # REQ: $mutually_exclusive_options
+  # REQ: mutually_exclusive_options
 
-  if [[ "$mutually_exclusive_options" ]]; then
+  if [[ -n "$mutually_exclusive_options" ]]; then
     err "Conflicting options (-a), (-c), and/or (-t) used."
     echo "---"
     show_help
-    exit 1
+    return 1
   fi
 }
 
-parse_options() {
+_parse_options() {
   # check for long "--help"
   if [[ "$1" == "--help" ]]; then
     show_help
-    exit 0
+    showed_help="1"
+    return 0
   fi
 
-  # set a local variable that prevents mutually exclusive options
+  # set a local variable, mutually_exclusive_options,
+  # that prevents mutually exclusive options;
   # use with _parse_options_prevent_me function
-  local opt mutually_exclusive_options
-  while getopts ":hactu:" opt; do
+  # showed_help, format_style, username, host_file - must be declared in main
+  local opt="" mutually_exclusive_options=""
+  while getopts ":hact:u:" opt; do
     case "$opt" in
-      h) show_help; exit 0 ;;
+      h)
+        show_help
+        showed_help="1"
+        return 0
+        ;;
       a)
         _parse_options_prevent_me
         mutually_exclusive_options="1"
@@ -67,16 +74,17 @@ parse_options() {
         _parse_options_prevent_me
         mutually_exclusive_options="1"
         format_style="3"
+        host_file="$OPTARG"
         ;;
       u) username="$OPTARG" ;;
       :)
         err "option -$OPTARG requires an argument"
-        exit 1
+        return 1
         ;;
       \?)
         err "Invalid option: -$OPTARG"
         show_help
-        exit 1
+        return 1
         ;;
     esac
   done
@@ -86,24 +94,21 @@ hostfile_to_array() {
   # convert each line in a file to an array element
   # skip lines that start with # or [, skip blank lines
   # trim leading and trailing whitespace
-  # : array name for $1 must be declared before function is called
   #
-  # ARG $1: output array name
-  # ARG $2: filename
-  # RET: array named in $1
+  # ARG $1: filename of hostlist
+  # RET: prints lines that represent valid hostnames
 
-  readarray -t "$1" < \
-            <(sed -E '/^[#\[]|^$/d; s/^[[:space:]]+|[[:space:]]+$//g' "$2")
+  sed -E '/^[#\[]|^$/d; s/^[[:space:]]+|[[:space:]]+$//g' "$1"
 }
 
 _oneshot_run_zero() {
   # neither -a or -c options, just stdout
   #
-  # REQ: $host_array[]
-  # REQ: $cmd_array[]
-  # REQ: $username
+  # REQ: host_array()
+  # REQ: cmd_array()
+  # REQ: username
 
-  local host cmd_output
+  local host="" cmd_output=""
   for host in "${host_array[@]}"; do
     if cmd_output=$(ssh -nq -o StrictHostKeyChecking=accept-new \
                         -o PasswordAuthentication=no -o ConnectTimeout=10 \
@@ -118,11 +123,11 @@ _oneshot_run_zero() {
 _oneshot_run_one() {
   # -a option, hostname and then a line break, extra blank line at end
   #
-  # REQ: $host_array[]
-  # REQ: $cmd_array[]
-  # REQ: $username
+  # REQ: host_array()
+  # REQ: cmd_array()
+  # REQ: username
 
-  local host cmd_output
+  local host="" cmd_output=""
   for host in "${host_array[@]}"; do
     echo "${host}:"
     if cmd_output=$(ssh -nq -o StrictHostKeyChecking=accept-new \
@@ -139,11 +144,11 @@ _oneshot_run_one() {
 _oneshot_run_two() {
   # -c option, csv format: {hostname},{stdout}
   #
-  # REQ: $host_array[]
-  # REQ: $cmd_array[]
-  # REQ: $username
+  # REQ: host_array()
+  # REQ: cmd_array()
+  # REQ: username
 
-  local host cmd_output
+  local host="" cmd_output=""
   echo "hostname,output"
   for host in "${host_array[@]}"; do
     echo -n "${host},"
@@ -160,10 +165,10 @@ _oneshot_run_two() {
 _oneshot_run_test() {
   # -t option, test connectivity to hosts in hostfile
   #
-  # REQ: $host_array[]
-  # REQ: $username
+  # REQ: host_array()
+  # REQ: username
 
-  local host cmd_output
+  local host="" cmd_output=""
   for host in "${host_array[@]}"; do
     if ! cmd_output=$(ssh -n -o StrictHostKeyChecking=accept-new \
                           -o PasswordAuthentication=no -o ConnectTimeout=10 \
@@ -175,38 +180,54 @@ _oneshot_run_test() {
 }
 
 main() {
-  # parse options and arguments; assign values
-  local format_style username
-  format_style="0"
-  username="$USER"
-  parse_options "$@"
-  shift $((OPTIND - 1)) # shift $@ past optional flags
+  set -eu
 
-  # check for at least two arguments after options are shifted, unless
-  # -t option is used
-  if [[ $# -ne 2 ]] && [[ "$format_style" -ne 3 ]]; then
-    err "Two arguments required: <hostfile> \"<command>\""
-    echo "---"
+  # define variables that can be assigned in _parse_options
+  local showed_help="" format_style="0" username="$USER" host_file=""
+  if [[ $# -gt 0 ]]; then
+    _parse_options "$@"
+    [[ -n "$showed_help" ]] && exit 0
+  else
     show_help
     exit 1
   fi
-  if [[ $# -eq 2 ]] && [[ "$format_style" -eq 3 ]]; then
-    warn "-t option used, command entered is ignored"
+  shift $((OPTIND - 1)) # shift $@ past optional flags
+
+  local -a cmd_array=()
+  # for non-test formats, where $format_style=0,1,2 -- check & prepare variables
+  if [[ "$format_style" -ne 3 ]]; then
+    if [[ $# -eq 2 ]]; then
+      # if correct number of arguments, set $1 to $host_file
+      host_file="$1"
+      # set command array to be used from $2
+      cmd_array=("${@:2}" "2>&1" "||" "true")
+    else
+      # if incorrect number of arguments, error and exit
+      err "two arguments are required: HOSTFILE \"COMMAND\""
+      echo "---"
+      show_help
+      exit 1
+    fi
+  else
+    # if test format used set command array to be used (static)
+    cmd_array=("true" "2>&1" "||" "true")
   fi
 
-  # check for $1, the hostfile, valid path
-  if ! [[ -f "$1" ]]; then
-    err "$1 not found. Please validate hostfile path"
-    exit 3
+  # for test format, -t or where $format_style=3, warn on extra arguments
+  if [[ "$format_style" -eq 3 && $# -gt 0 ]]; then
+    warn "-t option used, any command entered is ignored"
   fi
 
+  # validate host_file is readable
+  # host_file has either been set to $1 or assigned by -t at this point
+  if ! [[ -r "$host_file" ]]; then
+    err "$host_file not found; please validate hostfile path"
+    exit 1
+  fi
+
+  local -a host_array=()
   # place the hostfile into an array, parsing using hostfile_to_array function
-  local -a host_array cmd_array
-  hostfile_to_array "host_array" "$1"
-  # assemble the commands to pass into ssh, add "or true" to handle ssh errors
-  [[ "$format_style" -ne 3 ]] && cmd_array=("${@:2}" "2>&1" "||" "true")
-  # if "test" argument is used, use below $cmd_array[] values
-  [[ "$format_style" -eq 3 ]] && cmd_array=("true" "2>&1" "||" "true")
+  readarray -t host_array < <(hostfile_to_array "$host_file")
 
   # adhere to format style chosen, and use ssh to run command(s) on remote hosts
   case "$format_style" in
