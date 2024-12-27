@@ -8,7 +8,7 @@ Bash (and sed) scripts I've written to help with small tasks.
 
 --- usage  
 ```
-Usage: classip [-c -r -s] [<ip address>] ...
+Usage: classip [OPTION]... [IP ADDRESS]...
 Options:
   -h, --help    Show this help menu
   -c            Show all IP class ranges
@@ -33,16 +33,16 @@ print all information, and describe all IP address entered as arguments.
 
 --- usage  
 ```
-Usage: gitstat [-d <top-level directory>] [-i <directory to ignore>]
+Usage: gitstat [OPTION]...
 Options:
   -h, --help    Show this help menu
-  -d <dir>      Specify the top level directory to search from
-  -i <dir>      Ignore a specific directory from results (repeatable)
+  -d DIR        Specify the top level directory to search from
+  -i DIR        Ignore a specific directory from results (repeatable)
   -l            Only list git repos, and skip default action
 ```
 
 --- examples  
-`gitstat` or `gitstat .`  
+`gitstat`  
 run the command in your pwd.  
 
 `gitstat -d /opt`  
@@ -59,6 +59,35 @@ run the command to just list git directories, ignoring any directories under `./
 
 ---
 
+### notifbk
+
+`notifbk` is a companion script for [notif.el](https://github.com/beelleau/notif) that creates and manages backups of your notif directory. It can create a compressed archive and optionally rotate old `notif` backup archives. By default, it uses the default `notif-directory` value of `$HOME/notes`.  
+
+This script is very much written in a way that is specific to my use case; so, if you do use this script, you may need to edit it to change some variables such as `$notif_directory`, compression method, naming scheme, etc.  
+
+--- usage  
+```
+Usage: notifbk -d DIR [OPTION]...
+Options:
+  -h, --help    Show this help menu
+  -d DIR        The directory where to save your backup
+  -k NUM        When rotating old backups:
+                  - The NUM most recent backups to keep
+  -r            Rotate backups only (will not create a backup)
+```
+
+--- examples  
+`notifbk -d ~/Backups`  
+create a backup of notif directory and place the archive in `~/Backups`  
+
+`notifbk -d /mnt/backup_drive/notes -k 5`  
+create a backup of notif directory, place the archive in `/mnt/backup_drive/notes`, and rotate notif backups by keeping only the 5 most recent backups  
+
+`notifbk -d /backups -k 10 -r`  
+do not create a new backup, but rotate the notif backups in `/backups`, keeping the 10 most recent backups  
+
+---
+
 ### oneshot
 `oneshot` allows you to run a command against a list of remote hosts.  
 
@@ -70,13 +99,13 @@ Functionally, this script assumes that you have key-based authentication for ssh
 
 --- usage  
 ```
-Usage: oneshot [-a|-c] [-u <username>] <hostfile> "<command>"
+Usage: oneshot [OPTION]... FILE "COMMAND"
 Options:
   -h, --help    Show this help menu
   -a            Show output in 'view' format, with line-breaks
-  -c            Show output in CSV format {hostname},{output}
-  -t            Conduct a ssh connection test against <hostfile>
-  -u <user>     Specify SSH username
+  -c            Show output in CSV format HOSTNAME,OUTPUT
+  -t FILE       Conduct a ssh connection test against <hostfile>
+  -u USER       Specify SSH username
 ```
 
 --- examples  
@@ -117,7 +146,7 @@ banana,strawberry,cherry,blueberry
 ### s-noco
 `s-noco` is a sed scrip that prints text without comments (`#` and `;`) and blank lines. It could be helpful to quickly view the variables of large Unix configuration files that contain many comments, like `squid.conf` or `sshd.conf`.  
 
---- example  
+--- examples  
 ```
  $ cat fruits 
 # Donkey Kong's favorite fruit
@@ -137,35 +166,3 @@ strawberry
   cherry
 blueberry
 ```
-
----
-
-### sizable
-`sizable` prints largest files and/or directories under a given directories, relying on `find`.  
-
-By default, `sizable` will print the 10 largest files under the given directory. An option is available to increase the number of items printed.  
-
---- usage  
-```
-Usage: sizable [-d] [-f] [-n <number>] [<directory>]
-Options:
-  -h, --help    Show this help menu
-  -d            Show directories
-  -f            Show files (DEFAULT=True)
-                - (Only needed when using '-d' to print files and dirs)
-  -n <int>      Number of lines to show (DEFAULT=10)
-```
-
---- examples  
-
-`sizable`  
-show the 10 largest files in your current directory.  
-
-`sizable aaa/`  
-show the 10 largest files in the `aaa/` directory.  
-
-`sizable -n 15 bbb/ ccc/`
-show the 15 larges files in the `bbb/` directory, then show the 15 largest files in the `ccc/` directory.  
-
-`sizable -d 6 eee/`  
-show the 6 largest directorys in the `eee/` directory.  

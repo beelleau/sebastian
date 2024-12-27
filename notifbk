@@ -1,0 +1,203 @@
+#!/usr/bin/env bash
+#
+# notifbk :: companion backup script for notif.el
+# requires: bash 4.0+, tar, gzip, find, sort, rm
+
+trap 'echo -e "\nSIGINT Received... exiting"; exit 130' SIGINT
+
+err() {
+  # send errors to standard error
+  echo "[${0##*/}] error: $*" >&2
+}
+
+show_help() {
+  # help option text
+  echo "Usage: ${0##*/} -d DIR [OPTION]..."
+  echo "Options:"
+  echo "  -h, --help    Show this help menu"
+  echo "  -d DIR        The directory where to save your backup"
+  echo "  -k NUM        When rotating old backups:"
+  echo "                  - The NUM most recent backups to keep"
+  echo "  -r            Rotate backups only (will not create a backup)"
+}
+
+_parse_options() {
+  # parse options and assign variables
+
+  # check for long --help
+  if [[ "$1" == "--help" ]]; then
+    show_help
+    showed_help="1"
+    return 0
+  fi
+
+  # showed_help, backup_directory, keep_backup_files, rotate_backups_only -
+  # must be declared in main
+  local opt=""
+  while getopts ":hd:k:r" opt; do
+    case "$opt" in
+      h)
+        show_help
+        showed_help="1"
+        return 0
+        ;;
+      d)
+        backup_directory="${OPTARG%/}"
+        validate_directories "$backup_directory" || return 1
+        ;;
+      k)
+        keep_backup_files="$OPTARG"
+        if ! [[ "$keep_backup_files" -ge 1 ]]; then
+          err "value for the -k option must be greater than or equal to 1"
+          return 1
+        fi
+        ;;
+      r)
+        rotate_backups_only="1"
+        ;;
+      :)
+        err "option -$OPTARG requires an argument"
+        return 1
+        ;;
+      \?)
+        err "Invalid option: -$OPTARG"
+        show_help
+        return 1
+        ;;
+    esac
+  done
+}
+
+date() {
+  # See: 'man strftime' for format.
+  printf "%($1)T\n" "-1"
+  # to get YYYY-MM-DD-HH:mm:ss
+  # date "%F-%T"
+}
+
+validate_directories() {
+  # verify that a directory, or list of directories, exist
+  #
+  # ARG $@: any directory
+
+  local _dir=""
+  for _dir in "$@"; do
+    if ! [[ -d "$_dir" ]]; then
+      err "invalid directory $_dir"
+      return 1
+    fi
+  done
+}
+
+create_backup() {
+  # create the notif backup, a compressed archive
+  #
+  # ARG $1: notif directory
+  # ARG $2: backup directory
+
+  local notif_dir_name="" notif_dir_parent="" current_date_time=""
+  local archive_name=""
+
+  # split the $notif_directory into the dir name, and its parent path
+  notif_dir_name="${1##*/}"  # Get the directory name (part after last '/')
+  notif_dir_parent="${1%/*}" # Get the parent path (part before last '/')
+
+  # gather the date and time and set the archive name
+  current_date_time=$(date "%F-%T") || return 1
+  archive_name="notifbk-${current_date_time}.tar.gzip"
+
+  # the archive command
+  tar -czv -C "$notif_dir_parent" -f "${2}/${archive_name}" "$notif_dir_name"
+}
+
+rotate_old_backups() {
+  # removes old notif backups from backup directory
+  #
+  # ARG $1: destination directory of backups
+  # ARG $2: number of backups to keep (recency)
+
+  local -a backup_files=()
+  local -a files_to_remove=()
+  local n="$2"
+
+  # gather all notif backup file and place them into an array
+  readarray -t backup_files < \
+            <(find "$1" -maxdepth 1 -type f -name "*notifbk*tar*" | sort -n -r)
+
+  # a check if there are no files found in the destination directory
+  [[ "${#backup_files[@]}" -eq 0 ]] && echo "No backup files found in ${1}" && \
+    return 0
+
+  # echo all backup files found to the console, with a line indicating
+  # which will be kept and removed
+  local n="$2"
+  echo "----- Files to keep -----"
+  for (( i=0; i < ${#backup_files[@]}; i++ )); do
+    echo "${backup_files[$i]}"
+    if (( i == "$n" - 1 )); then
+      echo "---- Files to remove ----"
+    fi
+  done
+
+  # gather an array of files to remove
+  if [[ ${#backup_files[@]} -gt "$n" ]]; then
+    files_to_remove=("${backup_files[@]:n}") # slice the array
+    echo
+    # iterate through and remove each file
+    local file=""
+    for file in "${files_to_remove[@]}"; do
+      rm -i "$file"
+    done
+  else
+    echo
+    echo "[${0##*/}]: no files need to be removed"
+  fi
+}
+
+main() {
+  set -eu
+  set -o pipefail
+
+  # set constants
+  local notif_directory="$HOME/notes"
+  validate_directories "$notif_directory"
+
+  # define variables that can be assigned in _parse_options
+  local showed_help="" backup_directory="" keep_backup_files=""
+  local rotate_backups_only=""
+  if [[ $# -gt 0 ]]; then
+    _parse_options "$@"
+    [[ -n "$showed_help" ]] && exit 0
+  else
+    show_help
+    exit 1
+  fi
+
+  # -d option (backup_directory) is always required for any operation
+  if [[ -z "$backup_directory" ]]; then
+    err "backup directory [-d] required"
+    echo "---"
+    show_help
+    exit 1
+  fi
+
+  # if -r was NOT used, we will create a backup
+  if [[ -z "$rotate_backups_only" ]]; then
+    create_backup "$notif_directory" "$backup_directory"
+  fi
+
+  # if -k was used, then run rotate function
+  if [[ -n "$keep_backup_files" ]]; then
+    rotate_old_backups "$backup_directory" "$keep_backup_files"
+  fi
+
+  # if -r was used, but without -k, throw error
+  if [[ -n "$rotate_backups_only" ]] && [[ -z "$keep_backup_files" ]]; then
+    err "-k option required when using -r option"
+    echo "---"
+    show_help
+    exit 1
+  fi
+}
+
+main "$@"
