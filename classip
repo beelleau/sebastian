@@ -10,11 +10,6 @@ err() {
   echo "[${0##*/}] error: $*" >&2
 }
 
-warn() {
-  # send warnings to standard error
-  echo "[${0##*/}] warning: $*" >&2
-}
-
 show_help() {
   # help option text
   echo "Usage: ${0##*/} [OPTION]... [IP ADDRESS]..."
@@ -119,7 +114,7 @@ validate_ip_address() {
   # RET: 1 if failed
 
   if ! [[ "$1" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
-    warn "\"${1}\" is not a valid IP address!"
+    err "\"${1}\" is not a valid IP address!"
     return 1
   fi
 
@@ -131,12 +126,12 @@ validate_ip_address() {
   local octet_value=""
   for octet_value in "${ip_array[@]}"; do
     if [[ "$octet_value" != "0" && "$octet_value" =~ ^0 ]]; then
-      warn "\"${1}\" is not a valid IP address!"
+      err "\"${1}\" is not a valid IP address!"
       return 1
     fi
 
     if (( octet_value < 0 || octet_value > 255 )); then
-      warn "\"${1}\" is not a valid IP address!"
+      err "\"${1}\" is not a valid IP address!"
       return 1
     fi
   done
@@ -229,17 +224,24 @@ main() {
 
   option_printer "${class}${private}${special}"
 
-  local ip_address="" ip_class="" ip_pripub="" ip_special=""
+  local ip_address="" ip_class="" ip_pripub="" ip_special="" write_out=""
+  fail_rc="" # if any ip address was invalid; return non-zero rc
   # iterate through ip addresses and gather and print information
   for ip_address in "$@"; do
-    validate_ip_address "$ip_address" || continue
+    if ! validate_ip_address "$ip_address"; then
+      fail_rc="1"
+      continue
+    fi
 
     ip_class=$(get_ip_class "$ip_address")
     ip_pripub=$(get_ip_pripub "$ip_address")
     ip_special=$(get_ip_special "$ip_address")
-
-    echo "$ip_address : $ip_class $ip_pripub $ip_special"
+    write_out="$ip_address : $ip_class $ip_pripub $ip_special"
+    echo "${write_out%"${write_out##*[![:space:]]}"}" # trim trailing whitespace
   done
+
+  [[ -z "$fail_rc" ]] && exit 0
+  [[ -n "$fail_rc" ]] && exit 1
 }
 
 main "$@"
