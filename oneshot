@@ -22,7 +22,7 @@ show_help() {
   echo "  -h, --help    Show this help menu"
   echo "  -a            Show output in 'view' format, with line-breaks"
   echo "  -c            Show output in CSV format HOSTNAME,OUTPUT"
-  echo "  -t FILE       Conduct a ssh connection test against <hostfile>"
+  echo "  -t            Conduct a ssh connection test against FILE"
   echo "  -u USER       Specify SSH username"
 }
 
@@ -53,7 +53,7 @@ _parse_options() {
   # use with _parse_options_prevent_me function
   # showed_help, format_style, username, host_file - must be declared in main
   local opt="" mutually_exclusive_options=""
-  while getopts ":hact:u:" opt; do
+  while getopts ":hactu:" opt; do
     case "$opt" in
       h)
         show_help
@@ -74,7 +74,6 @@ _parse_options() {
         _parse_options_prevent_me
         mutually_exclusive_options="1"
         format_style="3"
-        host_file="$OPTARG"
         ;;
       u) username="$OPTARG" ;;
       :)
@@ -210,12 +209,12 @@ main() {
     fi
   else
     # if test format used set command array to be used (static)
-    cmd_array=("true" "2>&1" "||" "true")
-  fi
-
-  # for test format, -t or where $format_style=3, warn on extra arguments
-  if [[ "$format_style" -eq 3 && $# -gt 0 ]]; then
-    warn "-t option used, any command entered is ignored"
+    if [[ $# -ge 1 ]]; then
+      host_file="$1"
+      cmd_array=("true" "2>&1" "||" "true")
+      # we're ignoring any commands the user inputs here, so warn if occurs
+      [[ $# -gt 1 ]] && warn "-t option used, any command entered is ignored"
+    fi
   fi
 
   # validate host_file is readable
