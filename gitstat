@@ -26,6 +26,7 @@ show_help() {
   echo "  -h, --help    Show this help menu"
   echo "  -d DIR        Specify the top level directory to search from"
   echo "  -i DIR        Ignore a specific directory from results (repeatable)"
+  echo "  -b            Print git repos and their 'branch -a' output"
   echo "  -l            Only list git repos, and skip default action"
 }
 
@@ -41,7 +42,7 @@ _parse_options() {
 
   # showed_help, top_dir, opt_list, and exluded_dirs() must be declared in main
   local opt=""
-  while getopts ":hd:i:l" opt; do
+  while getopts ":hd:i:bl" opt; do
     case "$opt" in
       h)
         show_help
@@ -64,6 +65,7 @@ _parse_options() {
         excluded_dirs+=("$str_strip")
         ;;
       l) opt_list="1" ;;
+      b) opt_list="2" ;;
       :)
         err "option -$OPTARG requires an argument"
         return 1
@@ -135,10 +137,25 @@ print_array() {
   done
 }
 
-gitstat_run() {
-  # iterate through found git repos and print their git status
+gitstat_branch() {
+  # iterate through found git repos and print their 'git branch -a' output
   #
-  # ARG $1: array of git repo directories
+  # ARG $@: array of git repo directories
+
+  local repo=""
+  for repo in "$@"; do
+    echo -e "$repo"
+    cd "$repo"
+    git branch -a
+    echo -e "\n"
+    cd - 1>/dev/null
+  done
+}
+
+gitstat_run() {
+  # iterate through found git repos and print their 'git status' output
+  #
+  # ARG $@: array of git repo directories
 
   local repo=""
   for repo in "$@"; do
@@ -176,10 +193,16 @@ main() {
   # git_repos - checked_excluded_dirs = git_repos
   _remove_validated_excluded_dirs
 
-  # run list output if specified
-  if [[ -n "$opt_list" ]]; then
+  # run 'list' option output if specified
+  if [[ "$opt_list" -eq 1 ]]; then
     print_array "${git_repos[@]}" && exit 0
   fi
+
+  # run 'branch' option output if specified
+  if [[ "$opt_list" -eq 2 ]]; then
+    gitstat_branch "${git_repos[@]}" && exit 0
+  fi
+
   # run primary output
   gitstat_run "${git_repos[@]}"
 }

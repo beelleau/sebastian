@@ -38,6 +38,7 @@ Options:
   -h, --help    Show this help menu
   -d DIR        Specify the top level directory to search from
   -i DIR        Ignore a specific directory from results (repeatable)
+  -b            Print git repos and their 'branch -a' output
   -l            Only list git repos, and skip default action
 ```
 
