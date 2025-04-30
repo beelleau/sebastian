@@ -5,7 +5,7 @@
 
 trap 'echo -e "\nSIGINT Received... exiting"; exit 130' SIGINT
 
-# set constants
+# set constants - console colors
 readonly MAGENTA="\033[0;35m"
 readonly RESET="\033[0m"
 

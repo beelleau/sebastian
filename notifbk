@@ -5,6 +5,9 @@
 
 trap 'echo -e "\nSIGINT Received... exiting"; exit 130' SIGINT
 
+# set constant - notif directory
+readonly NOTIF_DIR="$HOME/notes"
+
 err() {
   # send errors to standard error
   echo "[${0##*/}] error: $*" >&2
@@ -52,9 +55,7 @@ _parse_options() {
           return 1
         fi
         ;;
-      r)
-        rotate_backups_only="1"
-        ;;
+      r) rotate_backups_only="1" ;;
       :)
         err "option -$OPTARG requires an argument"
         return 1
@@ -98,7 +99,7 @@ create_backup() {
   local notif_dir_name="" notif_dir_parent="" current_date_time=""
   local archive_name=""
 
-  # split the $notif_directory into the dir name, and its parent path
+  # split the $NOTIF_DIR into the dir name, and its parent path
   notif_dir_name="${1##*/}"  # Get the directory name (part after last '/')
   notif_dir_parent="${1%/*}" # Get the parent path (part before last '/')
 
@@ -158,9 +159,8 @@ main() {
   set -eu
   set -o pipefail
 
-  # set constants
-  local notif_directory="$HOME/notes"
-  validate_directories "$notif_directory"
+  # validate the notif directory constant variable
+  validate_directories "$NOTIF_DIR"
 
   # define variables that can be assigned in _parse_options
   local showed_help="" backup_directory="" keep_backup_files=""
@@ -183,7 +183,7 @@ main() {
 
   # if -r was NOT used, we will create a backup
   if [[ -z "$rotate_backups_only" ]]; then
-    create_backup "$notif_directory" "$backup_directory"
+    create_backup "$NOTIF_DIR" "$backup_directory"
   fi
 
   # if -k was used, then run rotate function
