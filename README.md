@@ -60,6 +60,49 @@ run the command to just list git directories, ignoring any directories under `./
 
 ---
 
+### n2c
+`n2c` is a sed script that converts line-breaks ('\n') into commas. It can be used to convert a file of entries separated by line-breaks into a comma-separated line.  
+
+--- example  
+```
+ $ cat fruits
+banana
+strawberry
+cherry
+blueberry
+
+ $ n2c fruits 
+banana,strawberry,cherry,blueberry
+```
+
+---
+
+### noco
+`noco` is a sed scrip that prints text without comments (`#` and `;`) and blank lines. It could be helpful to quickly view the variables of large Unix configuration files that contain many comments, like `squid.conf` or `sshd.conf`.  
+
+--- examples  
+```
+ $ cat fruits 
+# Donkey Kong's favorite fruit
+banana
+
+# mind the empty line above
+strawberry
+  # noco is aware of possible leading whitespace
+  cherry
+
+; a comment made with a semi-colon... named!
+blueberry
+
+ $ noco fruits
+banana
+strawberry
+  cherry
+blueberry
+```
+
+---
+
 ### notifbk
 
 `notifbk` is a companion script for [notif.el](https://github.com/beelleau/notif) that creates and manages backups of your notif directory. It can create a compressed archive and optionally rotate old `notif` backup archives. By default, it uses the default `notif-directory` value of `$HOME/notes`.  
@@ -124,46 +167,3 @@ ssh to each host in "/tmp/hostlist" as the user "larry" and run the command `gre
 
 `oneshot -t ../hostlist`  
 run the ssh "test" against `../hostlist`. You will automatically add new hosts' public keys to your `~/.ssh/known_hosts` file, and you will get a warning if a key has changed. Use this option to verify connectivity and/or conduct ssh related troubleshooting.
-
----
-
-### s-n2c
-`s-n2c` is a sed script that converts line-breaks ('\n') into commas. It can be used to convert a file of entries separated by line-breaks into a comma-separated line.  
-
---- example  
-```
- $ cat fruits
-banana
-strawberry
-cherry
-blueberry
-
- $ s-n2c fruits 
-banana,strawberry,cherry,blueberry
-```
-
----
-
-### s-noco
-`s-noco` is a sed scrip that prints text without comments (`#` and `;`) and blank lines. It could be helpful to quickly view the variables of large Unix configuration files that contain many comments, like `squid.conf` or `sshd.conf`.  
-
---- examples  
-```
- $ cat fruits 
-# Donkey Kong's favorite fruit
-banana
-
-# mind the empty line above
-strawberry
-  # s-noco is aware of possible leading whitespace
-  cherry
-
-; a comment made with a semi-colon... named!
-blueberry
-
- $ s-noco fruits
-banana
-strawberry
-  cherry
-blueberry
-```
