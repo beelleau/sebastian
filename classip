@@ -237,7 +237,7 @@ main() {
     ip_pripub=$(get_ip_pripub "$ip_address")
     ip_special=$(get_ip_special "$ip_address")
     write_out="$ip_address : $ip_class $ip_pripub $ip_special"
-    echo "${write_out%"${write_out##*[![:space:]]}"}" # trim trailing whitespace
+    printf '%s\n' "${write_out%[[:space:]]*}" # trims trailing whitespace
   done
 
   [[ -z "$fail_rc" ]] && exit 0
