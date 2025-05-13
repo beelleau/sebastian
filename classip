@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # classip :: ipv4 class information
-# requires: bash 3.2+
+# requires: bash 4.0+
 
 trap 'echo -e "\nSIGINT Received... exiting"; exit 130' SIGINT
 
@@ -121,7 +121,7 @@ validate_ip_address() {
   local -a ip_array=()
 
   # convert ip address to an array
-  IFS='.' read -r -a ip_array <<< "$1"
+  readarray -d '.' -t ip_array < <(printf '%s' "$1")
 
   local octet_value=""
   for octet_value in "${ip_array[@]}"; do
@@ -168,7 +168,7 @@ get_ip_pripub() {
   # RET: private or public
 
   local -a ip_array=()
-  IFS='.' read -r -a ip_array <<< "$1"
+  readarray -d '.' -t ip_array < <(printf '%s' "$1")
 
   if (( ip_array[0] == 10 )); then
     echo -n "private"
@@ -193,7 +193,7 @@ get_ip_special() {
   # RET: special ip type, or nothing
 
   local -a ip_array=()
-  IFS='.' read -r -a ip_array <<< "$1"
+  readarray -d '.' -t ip_array < <(printf '%s' "$1")
 
   if (( ip_array[0] == 127 )); then
     echo -n "loopback"
